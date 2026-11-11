@@ -1,0 +1,8 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { BarChart3, History, Settings, Users } from "lucide-react";
+import { useActiveMembership } from "../app";
+import { canViewReports } from "@/lib/report-data";
+import { useT } from "@/lib/i18n";
+import { LanguageSelect } from "@/components/LanguageSelect";
+export const Route = createFileRoute("/_authenticated/app/more")({ head: () => ({ meta: [{ title: "More — BhaiBiz" }, { name: "description", content: "Company reports, language, team and audit history." }, { property: "og:title", content: "More — BhaiBiz" }, { property: "og:description", content: "Company tools and language preferences." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: MorePage });
+function MorePage() { const { active } = useActiveMembership(); const t = useT(); const links = [{ to: "/app/reports", label: "Reports", icon: BarChart3, show: canViewReports(active.role) }, { to: "/app/team", label: "Team", icon: Users, show: active.role === "owner" }, { to: "/app/settings", label: "Company", icon: Settings, show: active.role === "owner" }, { to: "/app/audit", label: "Audit history", icon: History, show: active.role === "owner" }] as const; return <div className="mx-auto max-w-xl"><h1 className="text-2xl font-bold">{t("More")}</h1><div className="mt-5 flex items-center justify-between border-y py-4"><span>{t("Language")}</span><LanguageSelect /></div><nav className="mt-4 divide-y">{links.filter(l => l.show).map(l => <Link key={l.to} to={l.to} className="flex items-center gap-3 py-4 text-primary"><l.icon className="h-5 w-5" />{t(l.label)}</Link>)}</nav></div>; }

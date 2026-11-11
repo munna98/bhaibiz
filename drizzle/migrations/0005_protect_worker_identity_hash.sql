@@ -1,0 +1,3 @@
+REVOKE SELECT ON public.workers FROM authenticated;
+GRANT SELECT (id, company_id, worker_code, full_name, mobile, alt_mobile, category, joining_date, native_state, native_address, kerala_address, emergency_name, emergency_phone, notes, photo_path, status, aadhaar_last4, created_by, created_at, updated_at) ON public.workers TO authenticated;
+COMMENT ON COLUMN public.workers.aadhaar_hash IS 'Protected duplicate-check fingerprint; accessible only to privileged identity RPCs, not browser reads.';
