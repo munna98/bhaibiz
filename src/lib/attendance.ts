@@ -27,6 +27,10 @@ export function canEditDate(role: AppRole, date: string, today: string): boolean
 export const needsReason = (current: Mark, next: Mark, date: string, today: string) =>
   current !== "pending" && current !== next && date < today;
 
+/** Tapping a tile toggles between worked and not_worked (pending defaults to worked). */
+export const nextTileStatus = (current: Mark): AttendanceStatus =>
+  current === "worked" ? "not_worked" : "worked";
+
 export function summarize(marks: Mark[]) {
   const s = { total: marks.length, worked: 0, not_worked: 0, pending: 0 };
   for (const m of marks) s[m]++;

@@ -3,6 +3,60 @@ import type { AppRole } from "./company";
 export const canViewReports = (role: AppRole) => role !== "operator";
 export const canViewAudit = (role: AppRole) => role === "owner";
 export type ReportKind = "attendance" | "earned" | "collections" | "outstanding" | "advances";
+
+export type ReportConfigItem = {
+  value: ReportKind;
+  label: string;
+  badge: string;
+  explanation: string;
+  formula?: string;
+  note?: string;
+};
+
+export const REPORT_CONFIG_ITEMS: ReportConfigItem[] = [
+  {
+    value: "outstanding",
+    label: "Outstanding dues",
+    badge: "Balances",
+    explanation:
+      "Calculates the net balance for each worker by subtracting collections and adjustments from total commission earned.",
+    formula: "Commission Earned − Collected Payments ± Adjustments = Net Due",
+    note: "Balances include all history through the selected date. Inactive workers with outstanding balances remain trackable until settled.",
+  },
+  {
+    value: "attendance",
+    label: "Attendance",
+    badge: "Daily Log",
+    explanation:
+      "Detailed daily attendance register showing shifts marked as Worked, Not worked, or still Pending for each worker across the period.",
+    note: "Worked shifts generate daily commission according to active rate agreements. Pending shifts require supervisor attendance entry.",
+  },
+  {
+    value: "earned",
+    label: "Commission earned",
+    badge: "Work Commission",
+    explanation:
+      "Daily breakdown of labour commission earned by workers for worked attendance shifts.",
+    note: "Rate changes apply from their effective start date and never alter past earned days.",
+  },
+  {
+    value: "collections",
+    label: "Collections",
+    badge: "Receipts",
+    explanation:
+      "Complete transaction log of payments collected from workers with receipt numbers, dates, and payment modes.",
+    note: "Voided payment receipts are automatically excluded from report totals and ledgers.",
+  },
+  {
+    value: "advances",
+    label: "Advances",
+    badge: "Loans",
+    explanation:
+      "Tracks company loans and advances given to workers and repayments received towards the advance loan.",
+    formula: "Advances Given − Repayments Received = Net Advance Balance",
+    note: "Advance balances are kept strictly separate from regular daily attendance commission dues.",
+  },
+];
 export type ReportWorker = { id: string; full_name: string; worker_code: string; status: string; joining_date: string };
 export type ReportData = {
   workers: ReportWorker[];

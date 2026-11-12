@@ -1,12 +1,31 @@
-import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useNavigate, useLocation } from "@tanstack/react-router";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { CalendarCheck, Wallet, HardHat, LayoutDashboard, LogOut, Settings, Users, BarChart3, MoreHorizontal } from "lucide-react";
+import {
+  CalendarCheck,
+  Wallet,
+  HardHat,
+  LayoutDashboard,
+  LogOut,
+  Settings,
+  Users,
+  BarChart3,
+  MoreHorizontal,
+  ChevronDown,
+  ChevronRight,
+  Coins,
+  CalendarDays,
+  TrendingUp,
+  ReceiptText,
+  HandCoins,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { myMembershipsQuery, pickActive, ROLE_LABELS, setActiveCompanyId } from "@/lib/company";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { useT } from "@/lib/i18n";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { REPORT_CONFIG_ITEMS, type ReportKind } from "@/lib/report-data";
 
 export const Route = createFileRoute("/_authenticated/app")({
   loader: async ({ context }) => {
@@ -23,12 +42,43 @@ export function useActiveMembership() {
   return { active, all: data };
 }
 
+const REPORT_ICONS: Record<ReportKind, typeof Coins> = {
+  outstanding: Coins,
+  attendance: CalendarDays,
+  earned: TrendingUp,
+  collections: ReceiptText,
+  advances: HandCoins,
+};
+
+export const REPORT_NAV_ITEMS = REPORT_CONFIG_ITEMS.map((item) => ({
+  kind: item.value,
+  label: item.label,
+  icon: REPORT_ICONS[item.value],
+  badge: item.badge,
+  explanation: item.explanation,
+}));
+
 function AppShell() {
   const { active, all } = useActiveMembership();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const location = useLocation();
   const isOwner = active.role === "owner";
   const t = useT();
+
+  const isReportsPath = location.pathname.startsWith("/app/reports");
+  const currentReportKind = isReportsPath
+    ? ((location.search as Record<string, string | undefined>)?.["kind"] || "outstanding")
+    : null;
+
+  const [reportsOpen, setReportsOpen] = useState(isReportsPath);
+
+  useEffect(() => {
+    if (isReportsPath) {
+      setReportsOpen(true);
+    }
+  }, [isReportsPath]);
+
   const switchCompany = async (id: string) => {
     setActiveCompanyId(id);
     await qc.invalidateQueries({ queryKey: ["my-memberships"] });
@@ -67,16 +117,77 @@ function AppShell() {
         <div className="text-xs opacity-70">{t(ROLE_LABELS[active.role])}</div>
         <div className="mt-4 text-sidebar-foreground"><LanguageSelect /></div>
         <nav className="mt-6 flex flex-1 flex-col gap-1">
-          {nav.filter((n) => n.show).map((n) => (
-            <Link
-              key={n.to}
-              to={n.to}
-              activeOptions={{ exact: n.to === "/app" }}
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-primary"
-            >
-              <n.icon className="h-4 w-4" /> {t(n.label)}
-            </Link>
-          ))}
+          {nav.filter((n) => n.show).map((n) => {
+            if (n.to === "/app/reports") {
+              return (
+                <div key="/app/reports" className="flex flex-col">
+                  <div
+                    className={`flex items-center justify-between rounded-md transition-colors ${
+                      isReportsPath
+                        ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent"
+                    }`}
+                  >
+                    <Link
+                      to="/app/reports"
+                      search={{ kind: currentReportKind || "outstanding" }}
+                      className="flex flex-1 items-center gap-2 px-3 py-2 text-sm"
+                      onClick={() => setReportsOpen(true)}
+                    >
+                      <BarChart3 className="h-4 w-4 shrink-0" />
+                      <span>{t("Reports")}</span>
+                    </Link>
+                    <button
+                      type="button"
+                      aria-label={reportsOpen ? t("Collapse reports") : t("Expand reports")}
+                      className="mr-1 rounded p-1 text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/80 hover:text-sidebar-foreground"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setReportsOpen((prev) => !prev);
+                      }}
+                    >
+                      {reportsOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </button>
+                  </div>
+
+                  {reportsOpen && (
+                    <div className="ml-4 mt-1 flex flex-col gap-0.5 border-l border-sidebar-border/60 pl-2">
+                      {REPORT_NAV_ITEMS.map((sub) => {
+                        const isSubActive = isReportsPath && currentReportKind === sub.kind;
+                        return (
+                          <Link
+                            key={sub.kind}
+                            to="/app/reports"
+                            search={{ kind: sub.kind }}
+                            className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs transition-colors ${
+                              isSubActive
+                                ? "bg-sidebar-accent/80 font-medium text-sidebar-primary shadow-xs"
+                                : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+                            }`}
+                          >
+                            <sub.icon className="h-3.5 w-3.5 shrink-0 opacity-80" />
+                            <span className="truncate">{t(sub.label)}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={n.to}
+                to={n.to}
+                activeOptions={{ exact: n.to === "/app" }}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-sidebar-accent data-[status=active]:bg-sidebar-accent data-[status=active]:text-sidebar-primary"
+              >
+                <n.icon className="h-4 w-4" /> {t(n.label)}
+              </Link>
+            );
+          })}
         </nav>
         <Button variant="ghost" className="justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground" onClick={signOut}>
           <LogOut className="mr-2 h-4 w-4" /> {t("Sign out")}

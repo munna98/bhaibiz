@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays, canEditDate, needsReason, summarize } from "@/lib/attendance";
+import { addDays, canEditDate, needsReason, nextTileStatus, summarize } from "@/lib/attendance";
 
 const today = "2026-11-10";
 
@@ -37,4 +37,16 @@ it("counts unmarked workers as pending", () => {
 
 it("addDays crosses month ends", () => {
   expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
+});
+
+describe("tile view status cycling", () => {
+  it("defaults pending to worked on first tap", () => {
+    expect(nextTileStatus("pending")).toBe("worked");
+  });
+  it("toggles worked to not_worked", () => {
+    expect(nextTileStatus("worked")).toBe("not_worked");
+  });
+  it("toggles not_worked back to worked", () => {
+    expect(nextTileStatus("not_worked")).toBe("worked");
+  });
 });

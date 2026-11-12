@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarCheck, Wallet, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LanguageSelect } from "@/components/LanguageSelect";
+import { useT } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -17,24 +19,29 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const t = useT();
+
   return (
     <div className="min-h-screen bg-background">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-5 py-5">
+      <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-5">
         <span className="font-[family-name:var(--font-display)] text-xl font-bold text-primary">BhaiBiz</span>
-        <Button asChild variant="ghost"><Link to="/auth">Sign in</Link></Button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <LanguageSelect />
+          <Button asChild variant="ghost"><Link to="/auth">{t("Sign in")}</Link></Button>
+        </div>
       </header>
       <main className="mx-auto max-w-5xl px-5 pb-16 pt-10">
         <p className="mb-3 inline-block rounded-full bg-accent px-3 py-1 text-sm font-medium text-accent-foreground">
-          For Kerala labour suppliers
+          {t("For Kerala labour suppliers")}
         </p>
         <h1 className="max-w-2xl text-4xl font-bold leading-tight text-foreground md:text-5xl">
-          Who worked today, what's due, who still owes.
+          {t("Who worked today, what's due, who still owes.")}
         </h1>
         <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-          Mark attendance, and BhaiBiz works out each worker's daily commission and tracks every rupee collected.
+          {t("Mark attendance, and BhaiBiz works out each worker's daily commission and tracks every rupee collected.")}
         </p>
         <div className="mt-8 flex gap-3">
-          <Button asChild size="lg"><Link to="/auth">Start free</Link></Button>
+          <Button asChild size="lg"><Link to="/auth">{t("Start free")}</Link></Button>
         </div>
         <div className="mt-16 grid gap-4 md:grid-cols-3">
           {[
@@ -44,8 +51,8 @@ function Index() {
           ].map((f) => (
             <div key={f.t} className="rounded-xl border bg-card p-5 shadow-[var(--shadow-soft)]">
               <f.icon className="h-6 w-6 text-primary" />
-              <h3 className="mt-3 font-semibold">{f.t}</h3>
-              <p className="mt-1 text-sm text-muted-foreground">{f.d}</p>
+              <h3 className="mt-3 font-semibold">{t(f.t)}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{t(f.d)}</p>
             </div>
           ))}
         </div>

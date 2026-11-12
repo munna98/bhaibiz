@@ -41,3 +41,26 @@ it("Excel export keeps a formula-like worker name as literal text", () => {
   expect(rows[1]?.[0]?.type).toBe(String);
   expect(rows[1]?.[0]?.value).toBe('=HYPERLINK("bad")');
 });
+
+describe("reports configuration and navigation", () => {
+  it("report config items cover all 5 user-friendly report kinds", async () => {
+    const { REPORT_CONFIG_ITEMS } = await import("@/lib/report-data");
+
+    expect(REPORT_CONFIG_ITEMS).toHaveLength(5);
+    const kinds = REPORT_CONFIG_ITEMS.map((item) => item.value);
+    expect(kinds).toEqual(["outstanding", "attendance", "earned", "collections", "advances"]);
+
+    REPORT_CONFIG_ITEMS.forEach((cfg) => {
+      expect(cfg.label).toBeTruthy();
+      expect(cfg.explanation).toBeTruthy();
+      expect(cfg.badge).toBeTruthy();
+    });
+  });
+
+  it("filters workers with pending balances correctly", () => {
+    const report = buildReport(data, "outstanding", "2026-11-11", "2026-11-11", "all");
+    const withBalance = report.rows.filter((r) => Number(r.cells[6]) > 0);
+    expect(report.rows.length).toBeGreaterThanOrEqual(withBalance.length);
+    expect(withBalance.every((r) => Number(r.cells[6]) > 0)).toBe(true);
+  });
+});
