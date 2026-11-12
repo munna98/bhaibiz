@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Camera, FileUp, ShieldCheck } from "lucide-react";
 import { formatAadhaar, validateAadhaar } from "@/lib/aadhaar";
+import { AadhaarInput } from "@/components/workers/AadhaarInput";
 import { canManageWorkers, formatINR, rupeesToPaise } from "@/lib/workers";
 import { createWorker } from "@/lib/workers.functions";
 import { uploadAadhaarDoc, uploadWorkerPhoto } from "@/lib/worker-uploads";
@@ -15,6 +16,7 @@ import {
 } from "@/components/workers/WorkerFields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/app/workers/new")({
@@ -125,9 +127,15 @@ function NewWorkerPage() {
         {step === 1 && (
           <div className="space-y-5">
             <Field label="Aadhaar number" required error={aadhaarErr ?? undefined}>
-              <Input
-                value={formatAadhaar(aadhaar)}
-                onChange={(e) => setAadhaar(e.target.value.replace(/\D/g, "").slice(0, 12))}
+              <AadhaarInput
+                value={aadhaar}
+                onChange={(val) => {
+                  setAadhaar(val);
+                  if (aadhaarErr) setAadhaarErr(null);
+                }}
+                onClearError={() => {
+                  if (aadhaarErr) setAadhaarErr(null);
+                }}
                 inputMode="numeric"
                 placeholder="1234 5678 9012"
                 className="font-mono tracking-wider"
@@ -164,7 +172,7 @@ function NewWorkerPage() {
                 <Input value={rate} onChange={(e) => setRate(e.target.value)} inputMode="decimal" placeholder="150" />
               </Field>
               <Field label="Rate starts from" required>
-                <Input type="date" value={rateFrom} onChange={(e) => setRateFrom(e.target.value)} />
+                <DateInput value={rateFrom} onChange={(v) => setRateFrom(v)} />
               </Field>
             </div>
             <div className="rounded-lg bg-muted p-4 text-sm">

@@ -16,6 +16,7 @@ import { changeAadhaar, revealAadhaar } from "@/lib/workers.functions";
 import { uploadAadhaarDoc, uploadWorkerPhoto } from "@/lib/worker-uploads";
 import { useActiveMembership } from "../../app";
 import { Field, StatusBadge, WorkerAvatar } from "@/components/workers/WorkerFields";
+import { AadhaarInput } from "@/components/workers/AadhaarInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import { DateInput } from "@/components/ui/date-input";
 
 export const Route = createFileRoute("/_authenticated/app/workers/$workerId")({
   head: () => ({
@@ -311,7 +313,19 @@ function Identity({ worker }: { worker: Worker }) {
             <DialogDescription>{t("Use this only if the number was entered wrongly. The change is recorded.")}</DialogDescription>
           </DialogHeader>
           <Field label="New Aadhaar number" required error={err ?? undefined}>
-            <Input value={formatAadhaar(newNo)} onChange={(e) => setNewNo(e.target.value.replace(/\D/g, "").slice(0, 12))} inputMode="numeric" className="font-mono tracking-wider" />
+            <AadhaarInput
+              value={newNo}
+              onChange={(val) => {
+                setNewNo(val);
+                if (err) setErr(null);
+              }}
+              onClearError={() => {
+                if (err) setErr(null);
+              }}
+              inputMode="numeric"
+              placeholder="1234 5678 9012"
+              className="font-mono tracking-wider"
+            />
           </Field>
           <DialogFooter>
             <Button variant="outline" onClick={() => setChangeOpen(false)}>{t("Cancel")}</Button>
@@ -388,7 +402,7 @@ function Rates({ worker, agreements, today }: { worker: Worker; agreements: { id
               <Input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
             </Field>
             <Field label="Starts from">
-              <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <DateInput value={from} onChange={(v) => setFrom(v)} />
             </Field>
             <Field label="Note">
               <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("Optional")} />
@@ -458,7 +472,7 @@ function StatusDialog({ worker, open, onOpenChange }: { worker: Worker; open: bo
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <Field label="From date"><Input type="date" value={date} min={worker.joining_date} max={todayISO()} onChange={(e) => setDate(e.target.value)} /></Field>
+          <Field label="From date"><DateInput value={date} min={worker.joining_date} max={todayISO()} onChange={(v) => setDate(v)} /></Field>
           <Field label="Reason"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={toInactive ? "Went home for 2 months" : "Returned"} /></Field>
         </div>
         <DialogFooter>

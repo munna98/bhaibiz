@@ -5,6 +5,7 @@ import { formatINR, rupeesToPaise, todayISO } from "@/lib/workers";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DateInput } from "@/components/ui/date-input";
 
 export type AmountValues = { amount: number; date: string; method: PayMethod; text: string };
 
@@ -33,7 +34,7 @@ export function AmountForm({ submitLabel, withMethod = true, textLabel = "Refere
         </div>
         <div>
           <Label htmlFor={`${id}-dt`}>{t("Date")}</Label>
-          <Input id={`${id}-dt`} required type="date" max={today} value={date} onChange={(e) => setDate(e.target.value)} />
+          <DateInput id={`${id}-dt`} required max={today} value={date} onChange={(v) => setDate(v)} />
         </div>
       </div>
       {withMethod && (

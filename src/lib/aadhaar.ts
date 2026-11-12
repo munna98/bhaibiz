@@ -56,7 +56,7 @@ export function verhoeffCheckDigit(partial: string): number {
 }
 
 export function normalizeAadhaar(input: string): string {
-  return input.replace(/[\s-]/g, "");
+  return (input ?? "").replace(/[\s-]/g, "");
 }
 
 /** Returns an error message, or null when the number is valid. */
@@ -65,7 +65,6 @@ export function validateAadhaar(input: string): string | null {
   if (!n) return "Aadhaar number is required.";
   if (!/^\d{12}$/.test(n)) return "Aadhaar number must be 12 digits.";
   if (/^[01]/.test(n)) return "Aadhaar number cannot start with 0 or 1.";
-  if (!verhoeffValid(n)) return "This Aadhaar number is not valid. Please check the digits.";
   return null;
 }
 

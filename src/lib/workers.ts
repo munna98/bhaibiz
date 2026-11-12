@@ -14,17 +14,7 @@ export const canManageWorkers = (role: AppRole) => role === "owner" || role === 
 export const canChangeRate = (role: AppRole) => role === "owner";
 export const canSeeAadhaar = (role: AppRole) => role === "owner";
 
-/** Today's date in India as YYYY-MM-DD. */
-export function todayISO(now: Date = new Date()): string {
-  return now.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
-}
-
-/** DD-MM-YYYY */
-export function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const [y, m, d] = iso.slice(0, 10).split("-");
-  return `${d}-${m}-${y}`;
-}
+export { todayISO, todayDDMMYYYY, formatDate, formatDateTime, isoToDDMMYYYY, ddmmyyyyToISO, formatAsDDMMYYYYInput } from "./dates";
 
 /** ₹ in Indian grouping, e.g. 123456 paise -> ₹1,234.56; whole rupees drop decimals. */
 export function formatINR(paise: number): string {

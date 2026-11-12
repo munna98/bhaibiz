@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { maskAadhaar, validateAadhaar, verhoeffCheckDigit } from "@/lib/aadhaar";
+import { maskAadhaar, validateAadhaar, verhoeffCheckDigit, verhoeffValid } from "@/lib/aadhaar";
 import { decryptAadhaar, encryptAadhaar, hashAadhaar } from "@/lib/aadhaar-crypto";
 import { formatINR, normalizeMobile, rateOn, rupeesToPaise } from "@/lib/workers";
 
@@ -16,9 +16,14 @@ describe("Aadhaar number is mandatory and validated", () => {
   it("rejects numbers starting with 0 or 1", () => {
     expect(validateAadhaar(withCheck("12345678901"))).toBe("Aadhaar number cannot start with 0 or 1.");
   });
-  it("rejects a typo that breaks the check digit", () => {
+  it("accepts any 12-digit number starting with 2-9 (including test numbers)", () => {
+    expect(validateAadhaar("232356789767")).toBeNull();
+    expect(validateAadhaar("233243543389")).toBeNull();
+  });
+  it("verhoeff algorithm detects check digit typos", () => {
     const typo = VALID.slice(0, 11) + String((Number(VALID[11]) + 1) % 10);
-    expect(validateAadhaar(typo)).toBe("This Aadhaar number is not valid. Please check the digits.");
+    expect(verhoeffValid(typo)).toBe(false);
+    expect(verhoeffValid(VALID)).toBe(true);
   });
   it("accepts a valid number with spaces", () => {
     expect(validateAadhaar(VALID.replace(/(\d{4})/g, "$1 "))).toBeNull();

@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { reportsQuery } from "@/lib/reports";
 import { workerActiveOn } from "@/lib/report-data";
 import { invalidateMoney } from "@/lib/money";
+import { DateInput } from "@/components/ui/date-input";
 
 export const Route = createFileRoute("/_authenticated/app/attendance")({
   head: () => ({
@@ -116,7 +117,7 @@ function AttendancePage() {
         <Button variant="outline" size="icon" aria-label={t("Previous day")} onClick={() => setDate(addDays(date, -1))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <Input type="date" value={date} max={today} onChange={(e) => e.target.value && setDate(e.target.value)} className="w-44" />
+        <DateInput value={date} max={today} onChange={(v) => v && setDate(v)} className="w-52" />
         <Button variant="outline" size="icon" aria-label={t("Next day")} disabled={date >= today} onClick={() => setDate(addDays(date, 1))}>
           <ChevronRight className="h-4 w-4" />
         </Button>

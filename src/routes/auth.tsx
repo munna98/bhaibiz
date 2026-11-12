@@ -80,10 +80,10 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-[var(--shadow-soft)]">
         <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold text-primary">{t("BhaiBiz")}</h1><LanguageSelect /></div>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 mb-5 text-sm text-muted-foreground">
           {mode === "signin" ? t("Sign in to your account") : t("Create your account")}
         </p>
-        <div className="mt-5 space-y-2">
+        {/* <div className="mt-5 space-y-2">
           <button
             type="button"
             onClick={() => social("google")}
@@ -95,7 +95,7 @@ function AuthPage() {
         </div>
         <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
           <div className="h-px flex-1 bg-border" /> {t("or")}<div className="h-px flex-1 bg-border" />
-        </div>
+        </div> */}
         <form onSubmit={submit} className="space-y-3">
           {mode === "signup" && (
             <div className="space-y-1.5">

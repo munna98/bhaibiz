@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { INDIAN_STATES, WORKER_CATEGORIES, normalizeMobile, todayISO, type Worker } from "@/lib/workers";
 import { cn } from "@/lib/utils";
+import { DateInput } from "@/components/ui/date-input";
 
 export type PersonalForm = {
   full_name: string;
@@ -91,7 +92,7 @@ export function WorkerPersonalFields({ value, onChange, errors }: { value: Perso
         <datalist id="bb-categories">{WORKER_CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
       </Field>
       <Field label="Joining date" required error={errors.joining_date}>
-        <Input type="date" value={value.joining_date} onChange={set("joining_date")} />
+        <DateInput value={value.joining_date} onChange={(v) => onChange({ ...value, joining_date: v })} max={todayISO()} />
       </Field>
       <Field label="Home state">
         <Input value={value.native_state} onChange={set("native_state")} list="bb-states" placeholder="West Bengal" />
