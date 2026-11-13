@@ -1,9 +1,11 @@
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { useT } from "@/lib/i18n";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { signupWithResend } from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,6 +29,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const t = useT();
   const navigate = useNavigate();
+  const signup = useServerFn(signupWithResend);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -49,13 +52,10 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: `${window.location.origin}/app`, data: { full_name: name } },
+        await signup({
+          data: { email, password, fullName: name },
         });
-        if (error) throw error;
-        if (!data.session) toast.success("Check your email to confirm your account.");
+        toast.success(t("Check your email to confirm your account."));
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -70,7 +70,10 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm rounded-2xl border bg-card p-6 shadow-[var(--shadow-soft)]">
-        <div className="flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold text-primary">{t("BhaiBiz")}</h1><LanguageSelect /></div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold text-primary">{t("BhaiBiz")}</h1>
+          <LanguageSelect />
+        </div>
         <p className="mt-1 mb-5 text-sm text-muted-foreground">
           {mode === "signin" ? t("Sign in to your account") : t("Create your account")}
         </p>
@@ -83,7 +86,13 @@ function AuthPage() {
           )}
           <div className="space-y-1.5">
             <Label htmlFor="email">{t("Email")}</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">{t("Password")}</Label>
@@ -120,7 +129,9 @@ function AuthPage() {
           className="mt-4 w-full text-center text-sm text-primary underline-offset-4 hover:underline"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
         >
-          {mode === "signin" ? t("New here? Create an account") : t("Already have an account? Sign in")}
+          {mode === "signin"
+            ? t("New here? Create an account")
+            : t("Already have an account? Sign in")}
         </button>
       </div>
     </div>
