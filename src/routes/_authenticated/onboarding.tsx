@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -14,10 +14,6 @@ import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/_authenticated/onboarding")({
   ssr: false,
-  loader: async ({ context }) => {
-    const list = await context.queryClient.ensureQueryData(myMembershipsQuery());
-    if (list.length > 0) throw redirect({ to: "/app" });
-  },
   head: () => ({
     meta: [
       { property: "og:type", content: "website" },
@@ -47,9 +43,13 @@ function Onboarding() {
       if (!getActiveCompanyId()) {
         setActiveCompanyId(memberships[0].company_id);
       }
-      navigate({ to: "/app" });
+      supabase.auth.signOut().then(() => {
+        qc.clear();
+        toast.success(t("Company created! Please sign in to continue."));
+        navigate({ to: "/auth" });
+      });
     }
-  }, [memberships, navigate]);
+  }, [memberships, navigate, qc, t]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -66,9 +66,10 @@ function Onboarding() {
       });
       if (error) throw error;
       setActiveCompanyId(data as string);
-      await qc.refetchQueries({ queryKey: ["my-memberships"] });
-      toast.success(t("Company created!"));
-      navigate({ to: "/app" });
+      await supabase.auth.signOut();
+      qc.clear();
+      toast.success(t("Company created! Please sign in to continue."));
+      navigate({ to: "/auth" });
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
