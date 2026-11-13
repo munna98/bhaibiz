@@ -1,1 +1,3 @@
-project_id = "qmbekahcfshvmoilremg"
+# Supabase CLI project configuration
+# Replace with your Supabase project ref
+project_id = ""

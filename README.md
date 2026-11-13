@@ -1,29 +1,47 @@
-# Welcome to your Lovable project
+# BhaiBiz
 
-This project was built with [Lovable](https://lovable.dev).
+Attendance and commission ledger for labour suppliers.
 
-## Build with Lovable
+## Tech Stack
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+- **Framework**: TanStack Start (React 19)
+- **Routing**: TanStack Router
+- **State & Data Fetching**: TanStack React Query
+- **Styling**: Tailwind CSS v4
+- **Database & Auth**: Supabase
+- **ORM / Migrations**: Drizzle ORM
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+## Getting Started
 
-## Development
+### 1. Prerequisites
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+- Node.js (v20+ or v22+)
+- npm or bun
+
+### 2. Environment Setup
+
+Copy `.env.example` to `.env` and fill in your Supabase project credentials:
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+cp .env.example .env
+```
+
+Set the following variables:
+- `VITE_SUPABASE_URL` and `SUPABASE_URL`
+- `VITE_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_PUBLISHABLE_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `DATABASE_URL` (for Drizzle migrations)
+- `AADHAAR_KEY` (secret key for server-side Aadhaar encryption)
+
+### 3. Installation & Run
+
+```sh
+npm install
 npm run dev
 ```
 
-## Built with
+### 4. Build
 
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
+```sh
+npm run build
+```
