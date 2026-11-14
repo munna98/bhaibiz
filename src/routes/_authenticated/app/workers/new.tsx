@@ -2,11 +2,12 @@ import { useT } from "@/lib/i18n";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Camera, FileUp, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Camera, ShieldCheck } from "lucide-react";
 import { formatAadhaar, validateAadhaar } from "@/lib/aadhaar";
 import { AadhaarInput } from "@/components/workers/AadhaarInput";
+import { AadhaarCopyPicker } from "@/components/workers/AadhaarCopyPicker";
 import { canManageWorkers, formatINR, rupeesToPaise } from "@/lib/workers";
 import { createWorker } from "@/lib/workers.functions";
 import { uploadAadhaarDoc, uploadWorkerPhoto } from "@/lib/worker-uploads";
@@ -146,21 +147,8 @@ function NewWorkerPage() {
               <ShieldCheck className="h-4 w-4 shrink-0" />
               {t("Stored encrypted. Staff see only the last 4 digits; only the owner can view the full number.")}
             </div>
-            <Field label="Aadhaar copy (optional)">
-              <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed p-3 text-sm hover:bg-muted/50">
-                <FileUp className="h-5 w-5 text-muted-foreground" />
-                <span className="truncate">{doc ? doc.name : t("Photo or PDF, up to 5 MB")}</span>
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  className="sr-only"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] ?? null;
-                    if (f && f.size > 5 * 1024 * 1024 && f.type === "application/pdf") { toast.error("PDF is larger than 5 MB"); return; }
-                    setDoc(f);
-                  }}
-                />
-              </label>
+            <Field label="Aadhaar copy (optional)" asDiv>
+              <AadhaarCopyPicker file={doc} onChange={setDoc} />
             </Field>
           </div>
         )}
@@ -178,6 +166,11 @@ function NewWorkerPage() {
             <div className="rounded-lg bg-muted p-4 text-sm">
               <div className="font-semibold">{personal.full_name}</div>
               <div className="text-muted-foreground">{personal.mobile} · Aadhaar XXXX XXXX {aadhaar.slice(-4)}</div>
+              {doc && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {t("Aadhaar copy attached")}: <span className="font-medium text-foreground">{doc.name}</span>
+                </div>
+              )}
               {rupeesToPaise(rate) && (
                 <div className="mt-2">{t("Earns")} <b>{formatINR(rupeesToPaise(rate) ?? 0)}</b> {t("commission for every day marked Worked.")}</div>
               )}
@@ -201,30 +194,55 @@ function NewWorkerPage() {
 function PhotoPicker({ file, onChange }: { file: File | null; onChange: (f: File | null) => void }) {
   const t = useT();
   const [preview, setPreview] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file]);
+
   return (
-    <label className="flex cursor-pointer items-center gap-4">
-      {preview ? (
-        <img src={preview} alt={t("Worker")} className="h-20 w-20 rounded-full object-cover" />
-      ) : (
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-          <Camera className="h-7 w-7" />
+    <div className="flex items-center gap-4">
+      <label className="flex cursor-pointer items-center gap-4">
+        {preview ? (
+          <img src={preview} alt={t("Worker")} className="h-20 w-20 rounded-full object-cover" />
+        ) : (
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
+            <Camera className="h-7 w-7" />
+          </div>
+        )}
+        <div className="text-sm">
+          <div className="font-medium">{file ? t("Change photo") : t("Add photo")}</div>
+          <div className="text-muted-foreground">{t("Optional")}</div>
         </div>
+        <input
+          type="file"
+          accept="image/*"
+          capture="user"
+          className="sr-only"
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            onChange(f);
+          }}
+        />
+      </label>
+      {file && (
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => onChange(null)}
+        >
+          {t("Remove")}
+        </Button>
       )}
-      <div className="text-sm">
-        <div className="font-medium">{file ? t("Change photo") : t("Add photo")}</div>
-        <div className="text-muted-foreground">{t("Optional")}</div>
-      </div>
-      <input
-        type="file"
-        accept="image/*"
-        capture="user"
-        className="sr-only"
-        onChange={(e) => {
-          const f = e.target.files?.[0] ?? null;
-          onChange(f);
-          setPreview(f ? URL.createObjectURL(f) : null);
-        }}
-      />
-    </label>
+    </div>
   );
 }

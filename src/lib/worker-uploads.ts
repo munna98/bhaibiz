@@ -28,11 +28,10 @@ export async function uploadWorkerPhoto(companyId: string, workerId: string, fil
 }
 
 export async function uploadAadhaarDoc(companyId: string, workerId: string, file: File) {
-  const isPdf = file.type === "application/pdf";
-  if (!isPdf && !file.type.startsWith("image/")) throw new Error("Upload a photo or PDF of the Aadhaar card.");
-  const body: Blob = isPdf ? file : await resizeImage(file, 1800, 0.88);
-  const path = `${companyId}/${workerId}/aadhaar/${Date.now()}.${isPdf ? "pdf" : "jpg"}`;
-  const up = await supabase.storage.from(BUCKET).upload(path, body, { contentType: isPdf ? "application/pdf" : "image/jpeg" });
+  if (!file.type.startsWith("image/")) throw new Error("Upload a photo of the Aadhaar card.");
+  const body: Blob = await resizeImage(file, 1800, 0.88);
+  const path = `${companyId}/${workerId}/aadhaar/${Date.now()}.jpg`;
+  const up = await supabase.storage.from(BUCKET).upload(path, body, { contentType: "image/jpeg" });
   if (up.error) throw up.error;
   const { error } = await supabase
     .from("worker_documents")

@@ -18,3 +18,10 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => {},
   }),
 });
+
+if (typeof window.URL.createObjectURL === "undefined") {
+  window.URL.createObjectURL = (blob: Blob | MediaSource) => `blob:mock-url-${(blob as File).name ?? "file"}`;
+}
+if (typeof window.URL.revokeObjectURL === "undefined") {
+  window.URL.revokeObjectURL = () => {};
+}

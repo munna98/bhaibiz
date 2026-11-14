@@ -57,17 +57,18 @@ export function checkPersonal(f: PersonalForm): { errors: PersonalErrors; value:
   };
 }
 
-export function Field({ label, error, required, children, className }: { label: string; error?: string | undefined; required?: boolean; children: React.ReactNode; className?: string | undefined }) {
+export function Field({ label, error, required, children, className, asDiv }: { label: string; error?: string | undefined; required?: boolean; children: React.ReactNode; className?: string | undefined; asDiv?: boolean }) {
   const t = useT();
+  const Wrapper = asDiv ? "div" : Label;
   return (
     <div className={cn("space-y-1.5", className)}>
-      <Label className="flex flex-col items-stretch gap-1.5">
+      <Wrapper className={cn("flex flex-col items-stretch gap-1.5", asDiv && "text-sm font-medium leading-none")}>
         <span>
           {t(label)}
           {required && <span className="text-destructive"> *</span>}
         </span>
         {children}
-      </Label>
+      </Wrapper>
       {error && <p className="text-xs text-destructive">{t(error)}</p>}
     </div>
   );

@@ -287,7 +287,7 @@ function Identity({ worker }: { worker: Worker }) {
           {canManageWorkers(active.role) && (
             <>
               <Button size="sm" variant="outline" onClick={() => docInput.current?.click()}><FileUp className="mr-1 h-3.5 w-3.5" /> {t("Upload")}</Button>
-              <input ref={docInput} type="file" accept="image/*,application/pdf" className="sr-only" onChange={(e) => onDoc(e.target.files?.[0])} />
+              <input ref={docInput} type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => onDoc(e.target.files?.[0])} />
             </>
           )}
         </div>
