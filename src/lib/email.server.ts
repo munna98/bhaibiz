@@ -5,12 +5,12 @@ interface SendActivationEmailParams {
 }
 
 export async function sendActivationEmail({ to, name, confirmUrl }: SendActivationEmailParams) {
-  const apiKey = process.env.RESEND_API_KEY;
+  const apiKey = process.env["RESEND_API_KEY"];
   if (!apiKey) {
     throw new Error("RESEND_API_KEY is not configured.");
   }
 
-  const fromEmail = process.env.RESEND_FROM_EMAIL || "BhaiBiz <noreply@noreplay.bhaibiz.com>";
+  const fromEmail = process.env["RESEND_FROM_EMAIL"] || "BhaiBiz <noreply@noreplay.bhaibiz.com>";
   const displayName = name ? name.trim() : "";
 
   const html = `

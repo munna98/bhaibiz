@@ -7,43 +7,31 @@ const signupSchema = z.object({
   fullName: z.string().trim().min(1, "Name is required").max(120),
 });
 
-export const signupWithResend = createServerFn({ method: "POST" })
+export const signupUser = createServerFn({ method: "POST" })
   .validator((input: unknown) => signupSchema.parse(input))
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { sendActivationEmail } = await import("./email.server");
 
-    const appUrl = (process.env.APP_URL || "https://bhaibiz.com").replace(/\/+$/, "");
-
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: "signup",
+    const { error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.password,
-      options: {
-        data: { full_name: data.fullName },
-        redirectTo: `${appUrl}/app`,
+      email_confirm: true,
+      user_metadata: {
+        full_name: data.fullName,
       },
     });
 
-    if (linkError) {
-      if (linkError.message.includes("already been registered")) {
+    if (createError) {
+      if (
+        createError.message.toLowerCase().includes("already registered") ||
+        createError.message.toLowerCase().includes("already been registered")
+      ) {
         throw new Error("A user with this email address has already been registered.");
       }
-      throw new Error(linkError.message);
+      throw new Error(createError.message);
     }
-
-    const tokenHash = linkData.properties?.hashed_token;
-    if (!tokenHash) {
-      throw new Error("Could not generate confirmation token.");
-    }
-
-    const confirmUrl = `${appUrl}/auth/confirm?token_hash=${tokenHash}&type=signup`;
-
-    await sendActivationEmail({
-      to: data.email,
-      name: data.fullName,
-      confirmUrl,
-    });
 
     return { ok: true };
   });
+
+export const signupWithResend = signupUser;

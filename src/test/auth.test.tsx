@@ -34,7 +34,7 @@ vi.mock("@/integrations/supabase/client", () => ({
       onAuthStateChange: vi
         .fn()
         .mockReturnValue({ data: { subscription: { unsubscribe: vi.fn() } } }),
-      signInWithPassword: vi.fn(),
+      signInWithPassword: vi.fn().mockResolvedValue({ data: { session: {} }, error: null }),
       verifyOtp: vi.fn(),
     },
   },
@@ -66,7 +66,7 @@ describe("AuthPage", () => {
     expect(screen.getByRole("button", { name: /Show password/i })).toBeInTheDocument();
   });
 
-  it("calls signup server function when submitting signup form", async () => {
+  it("calls signup server function and logs in when submitting signup form", async () => {
     const Component = AuthRoute.options.component!;
     render(<Component />);
 
@@ -93,6 +93,34 @@ describe("AuthPage", () => {
           fullName: "Test User",
         },
       });
+      expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
+        email: "test@bhaibiz.com",
+        password: "password123",
+      });
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/app" });
+    });
+  });
+
+  it("signs in directly when in signin mode", async () => {
+    const Component = AuthRoute.options.component!;
+    render(<Component />);
+
+    fireEvent.change(screen.getByLabelText(/^Email/i), {
+      target: { value: "existing@bhaibiz.com" },
+    });
+    fireEvent.change(screen.getByLabelText(/^Password/i), {
+      target: { value: "password123" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /Sign in/i }));
+
+    await waitFor(() => {
+      expect(mockSignupServerFn).not.toHaveBeenCalled();
+      expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
+        email: "existing@bhaibiz.com",
+        password: "password123",
+      });
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/app" });
     });
   });
 });

@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { signupWithResend } from "@/lib/auth.functions";
+import { signupUser } from "@/lib/auth.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,7 @@ export const Route = createFileRoute("/auth")({
 function AuthPage() {
   const t = useT();
   const navigate = useNavigate();
-  const signup = useServerFn(signupWithResend);
+  const signup = useServerFn(signupUser);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -51,15 +51,18 @@ function AuthPage() {
     e.preventDefault();
     setBusy(true);
     try {
+      const cleanEmail = email.trim();
       if (mode === "signup") {
         await signup({
-          data: { email, password, fullName: name },
+          data: { email: cleanEmail, password, fullName: name.trim() },
         });
-        toast.success(t("Check your email to confirm your account."));
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
       }
+      const { error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password,
+      });
+      if (error) throw error;
+      navigate({ to: "/app" });
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
