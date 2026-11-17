@@ -22,6 +22,7 @@ export const INVITABLE_ROLES: AppRole[] = ["manager", "operator", "accountant"];
 
 export type MyMembership = {
   company_id: string;
+  company_name: string | null;
   role: AppRole;
   company: { id: string; name: string; phone: string | null; address: string | null; receipt_prefix: string };
 };
@@ -35,7 +36,7 @@ export const myMembershipsQuery = () =>
       await supabase.rpc("accept_my_invites");
       const { data, error } = await supabase
         .from("memberships")
-        .select("company_id, role, company:companies(id, name, phone, address, receipt_prefix)")
+        .select("company_id, company_name, role, company:companies(id, name, phone, address, receipt_prefix)")
         .eq("user_id", u.user.id)
         .order("created_at");
       if (error) throw error;

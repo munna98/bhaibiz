@@ -92,7 +92,7 @@ function Dashboard() {
     <div className="mx-auto max-w-5xl">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">{active.company.name}</h1>
+          <h1 className="text-2xl font-bold">{active.company_name || active.company.name}</h1>
           <p className="text-sm text-muted-foreground">
             {new Date(selectedDate + "T00:00:00+05:30").toLocaleDateString(language === "ml" ? "ml-IN" : "en-IN", { weekday: "long", day: "numeric", month: "long" })}
           </p>

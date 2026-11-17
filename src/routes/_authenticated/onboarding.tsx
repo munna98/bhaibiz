@@ -41,7 +41,8 @@ function Onboarding() {
   useEffect(() => {
     if (memberships && memberships.length > 0) {
       if (!getActiveCompanyId()) {
-        setActiveCompanyId(memberships[0].company_id);
+        const first = memberships[0];
+        if (first) setActiveCompanyId(first.company_id);
       }
       supabase.auth.signOut().then(() => {
         qc.clear();

@@ -586,7 +586,7 @@ function ReportContent() {
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold">{active.company.name}</h2>
+                <h2 className="text-xl font-bold">{active.company_name || active.company.name}</h2>
                 <span className="text-muted-foreground">·</span>
                 <span className="text-lg font-semibold text-primary">{t(activeConfig.label)}</span>
               </div>

@@ -50,7 +50,7 @@ export const Route = createFileRoute("/_authenticated/app")({
 
 export function useActiveMembership() {
   const { data } = useSuspenseQuery(myMembershipsQuery());
-  const active = pickActive(data) ?? data[0];
+  const active = (pickActive(data) ?? data[0])!;
   return { active, all: data };
 }
 
@@ -108,13 +108,13 @@ function AppShell() {
         <SelectContent>
           {all.map((m) => (
             <SelectItem key={m.company_id} value={m.company_id}>
-              {m.company.name}
+              {m.company_name || m.company.name}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
     ) : (
-      <div className="mt-3 truncate text-sm font-medium">{active.company.name}</div>
+      <div className="mt-3 truncate text-sm font-medium">{active.company_name || active.company.name}</div>
     );
 
   const nav = [

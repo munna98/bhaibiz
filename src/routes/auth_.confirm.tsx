@@ -10,8 +10,8 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 export const Route = createFileRoute("/auth_/confirm")({
   ssr: false,
   validateSearch: (search: Record<string, unknown>) => ({
-    token_hash: typeof search.token_hash === "string" ? search.token_hash : undefined,
-    type: typeof search.type === "string" ? search.type : undefined,
+    token_hash: typeof search["token_hash"] === "string" ? search["token_hash"] : undefined,
+    type: typeof search["type"] === "string" ? search["type"] : undefined,
   }),
   head: () => ({
     meta: [

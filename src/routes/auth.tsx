@@ -32,7 +32,7 @@ function AuthPage() {
   const signup = useServerFn(signupUser);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -51,17 +51,31 @@ function AuthPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      const cleanEmail = email.trim();
+      const cleanInput = identifier.trim().toLowerCase();
+      if (!cleanInput) throw new Error("Please enter your email or username");
+
+      const emailToUse = cleanInput.includes("@")
+        ? cleanInput
+        : `${cleanInput}@staff.bhaibiz.internal`;
+
       if (mode === "signup") {
+        if (!cleanInput.includes("@")) {
+          throw new Error("Please use a valid email address to create a new company account.");
+        }
         await signup({
-          data: { email: cleanEmail, password, fullName: name.trim() },
+          data: { email: cleanInput, password, fullName: name.trim() },
         });
       }
       const { error } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
+        email: emailToUse,
         password,
       });
-      if (error) throw error;
+      if (error) {
+        if (error.message.toLowerCase().includes("invalid login credentials")) {
+          throw new Error("Invalid username/email or password.");
+        }
+        throw error;
+      }
       navigate({ to: "/app" });
     } catch (err) {
       toast.error((err as Error).message);
@@ -88,12 +102,17 @@ function AuthPage() {
             </div>
           )}
           <div className="space-y-1.5">
-            <Label htmlFor="email">{t("Email")}</Label>
+            <Label htmlFor="identifier">
+              {mode === "signup" ? t("Email") : t("Email or Username")}
+            </Label>
             <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="identifier"
+              type={mode === "signup" ? "email" : "text"}
+              placeholder={mode === "signup" ? "name@email.com" : "username or name@email.com"}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              autoCapitalize="none"
+              autoCorrect="off"
               required
             />
           </div>

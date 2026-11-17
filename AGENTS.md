@@ -1,6 +1,6 @@
 ## Project rules
 - Multi-company tenancy: every business table carries `company_id`; RLS uses `is_member`/`has_role` security-definer functions over `memberships`. Why: keeps each company's data isolated without per-query filters.
-- Staff join via `invites` (email + role) consumed by `accept_my_invites()` on load. Why: no email sending needed for invites.
+- Staff join via direct owner creation with global username & password (with fallback legacy invites consumed by `accept_my_invites()`). Why: zero email friction and instant activation for non-tech-savvy staff without requiring email addresses or verification steps.
 - Signed-in pages live under `src/routes/_authenticated/` (client-only guard); app shell is `/app`. Why: session lives in the browser.
 - Aadhaar numbers are encrypted (AES-GCM) and HMAC-hashed only inside server functions (`src/lib/workers.functions.ts`, secret `AADHAAR_KEY`); ciphertext lives in owner-only `worker_aadhaar`, `workers` keeps last4 + hash. Why: staff never receive full numbers; hash enables per-company duplicate checks.
 - Worker creation, status changes and Aadhaar corrections go through security-definer RPCs; clients may update only granted personal columns on `workers`. Why: keeps worker code sequence, history rows and status audit consistent.

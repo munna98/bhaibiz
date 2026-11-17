@@ -533,6 +533,7 @@ export type Database = {
       memberships: {
         Row: {
           company_id: string
+          company_name: string | null
           created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
@@ -540,6 +541,7 @@ export type Database = {
         }
         Insert: {
           company_id: string
+          company_name?: string | null
           created_at?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
@@ -547,6 +549,7 @@ export type Database = {
         }
         Update: {
           company_id?: string
+          company_name?: string | null
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
@@ -684,18 +687,21 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          username: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           full_name?: string | null
           id: string
+          username?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -1001,6 +1007,14 @@ export type Database = {
     }
     Functions: {
       accept_my_invites: { Args: never; Returns: number }
+      add_team_member: {
+        Args: {
+          _company: string
+          _role: Database["public"]["Enums"]["app_role"]
+          _user: string
+        }
+        Returns: undefined
+      }
       add_adjustment: {
         Args: {
           _amount: number
