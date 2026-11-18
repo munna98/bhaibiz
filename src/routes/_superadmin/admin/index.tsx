@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { listTenants } from "@/lib/superadmin.functions";
-import { Building2, Users, HardHat, LogOut, ArrowRight, TrendingUp } from "lucide-react";
+import { Building2, Users, HardHat, LogOut, ArrowRight, TrendingUp, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -97,14 +97,34 @@ function AdminDashboard() {
                   onClick={() => navigate({ to: "/admin/$companyId", params: { companyId: t.id } })}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{t.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {t.phone ?? "No phone"} · Created{" "}
-                      {new Date(t.created_at).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold truncate text-base">{t.name}</span>
+                      {t.owner_name && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          ({t.owner_name})
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1">
+                      {t.owner_email ? (
+                        <span className="inline-flex items-center gap-1 font-medium text-foreground/90 bg-muted/60 px-2 py-0.5 rounded">
+                          <Mail className="h-3 w-3 text-primary shrink-0" />
+                          <span className="truncate">{t.owner_email}</span>
+                        </span>
+                      ) : (
+                        <span className="italic text-muted-foreground/70">No owner email</span>
+                      )}
+                      <span>·</span>
+                      <span>{t.phone ?? "No phone"}</span>
+                      <span>·</span>
+                      <span>
+                        Created{" "}
+                        {new Date(t.created_at).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </span>
                     </div>
                   </div>
                   <div className="hidden sm:flex items-center gap-6 text-sm text-muted-foreground">

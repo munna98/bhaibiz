@@ -19,10 +19,51 @@ export const listTenants = createServerFn({ method: "GET" })
 
     const { data: companies, error } = await supabaseAdmin
       .from("companies")
-      .select("id, name, phone, address, receipt_prefix, created_at")
+      .select("id, name, phone, address, receipt_prefix, created_at, created_by")
       .order("created_at", { ascending: false });
 
     if (error) throw new Error(error.message);
+
+    // Fetch owner memberships for all companies
+    const { data: ownerMembers } = await supabaseAdmin
+      .from("memberships")
+      .select("company_id, user_id")
+      .eq("role", "owner");
+
+    const ownerByCompany: Record<string, string> = {};
+    for (const m of ownerMembers ?? []) {
+      if (!ownerByCompany[m.company_id]) {
+        ownerByCompany[m.company_id] = m.user_id;
+      }
+    }
+
+    // Collect all owner user IDs
+    const allOwnerUserIds = Array.from(
+      new Set([
+        ...Object.values(ownerByCompany),
+        ...(companies ?? []).map((c) => c.created_by).filter(Boolean),
+      ])
+    );
+
+    // Fetch profiles for all owners
+    const { data: profiles } = allOwnerUserIds.length > 0
+      ? await supabaseAdmin
+          .from("profiles")
+          .select("id, email, full_name, username")
+          .in("id", allOwnerUserIds)
+      : { data: [] };
+
+    const profileMap: Record<string, { email: string | null; full_name: string | null }> = {};
+    for (const p of profiles ?? []) {
+      profileMap[p.id] = { email: p.email, full_name: p.full_name || p.username };
+    }
+
+    // Also fetch auth users to guarantee we have their real email even if profile is incomplete
+    const authUsersRes = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 }).catch(() => null);
+    const authEmailMap: Record<string, string> = {};
+    for (const u of authUsersRes?.data?.users ?? []) {
+      if (u.email) authEmailMap[u.id] = u.email;
+    }
 
     // Fetch member counts for all companies in one query
     const { data: memberRows } = await supabaseAdmin
@@ -48,12 +89,24 @@ export const listTenants = createServerFn({ method: "GET" })
       }
     }
 
-    return (companies ?? []).map((c) => ({
-      ...c,
-      member_count: memberCounts[c.id] ?? 0,
-      worker_count: workerCounts[c.id] ?? 0,
-      active_worker_count: activeWorkerCounts[c.id] ?? 0,
-    }));
+    return (companies ?? []).map((c) => {
+      const ownerUserId = ownerByCompany[c.id] || c.created_by;
+      const ownerEmail =
+        (ownerUserId ? authEmailMap[ownerUserId] : null) ||
+        (ownerUserId ? profileMap[ownerUserId]?.email : null) ||
+        null;
+      const ownerName = ownerUserId ? profileMap[ownerUserId]?.full_name || null : null;
+
+      return {
+        ...c,
+        owner_id: ownerUserId || null,
+        owner_email: ownerEmail,
+        owner_name: ownerName,
+        member_count: memberCounts[c.id] ?? 0,
+        worker_count: workerCounts[c.id] ?? 0,
+        active_worker_count: activeWorkerCounts[c.id] ?? 0,
+      };
+    });
   });
 
 // ---------------------------------------------------------------------------
@@ -113,8 +166,24 @@ export const getTenantDetail = createServerFn({ method: "GET" })
       profile: profilesById[m.user_id] ?? { full_name: null, email: null, username: null },
     }));
 
+    const ownerMember = members.find((m) => m.role === "owner");
+    let ownerEmail = ownerMember?.profile.email || null;
+    let ownerName = ownerMember?.profile.full_name || ownerMember?.profile.username || null;
+
+    if (!ownerEmail && (ownerMember?.user_id || companyRes.data.created_by)) {
+      const targetUserId = ownerMember?.user_id || companyRes.data.created_by;
+      const authUser = await supabaseAdmin.auth.admin.getUserById(targetUserId).catch(() => null);
+      if (authUser?.data?.user?.email) {
+        ownerEmail = authUser.data.user.email;
+      }
+    }
+
     return {
-      company: companyRes.data,
+      company: {
+        ...companyRes.data,
+        owner_email: ownerEmail,
+        owner_name: ownerName,
+      },
       members,
       workers: workersRes.data ?? [],
     };

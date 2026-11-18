@@ -17,6 +17,7 @@ import {
   Wallet,
   TrendingUp,
   CircleDot,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -104,6 +105,7 @@ function TenantDetail() {
         {/* Company info */}
         <section className="rounded-xl border bg-card shadow-sm p-5 grid gap-3 sm:grid-cols-2">
           <InfoRow icon={Building2} label="Name" value={company.name} />
+          <InfoRow icon={Mail} label="Owner email" value={(company as { owner_email?: string | null }).owner_email ?? "—"} />
           <InfoRow icon={Phone} label="Phone" value={company.phone ?? "—"} />
           <InfoRow icon={MapPin} label="Address" value={company.address ?? "—"} />
           <InfoRow icon={Badge} label="Receipt prefix" value={company.receipt_prefix} />
