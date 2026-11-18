@@ -2,8 +2,14 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { getTenantDetail, getTenantStats } from "@/lib/superadmin.functions";
+import {
+  getTenantDetail,
+  getTenantStats,
+  activateCompanySubscription,
+  extendCompanyTrial,
+} from "@/lib/superadmin.functions";
 import { setActiveCompanyId } from "@/lib/company";
+import { getSubscriptionBadge, getSubscriptionStatus } from "@/lib/subscription";
 import {
   ArrowLeft,
   Building2,
@@ -18,6 +24,12 @@ import {
   TrendingUp,
   CircleDot,
   Mail,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  MessageSquare,
+  Loader2,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -46,10 +58,13 @@ function TenantDetail() {
   const navigate = useNavigate();
   const fetchDetail = useServerFn(getTenantDetail);
   const fetchStats = useServerFn(getTenantStats);
+  const activateSub = useServerFn(activateCompanySubscription);
+  const extendTrial = useServerFn(extendCompanyTrial);
 
   const [detail, setDetail] = useState<Detail | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [actionBusy, setActionBusy] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -70,6 +85,50 @@ function TenantDetail() {
     navigate({ to: "/app" });
   }
 
+  async function handleActivate1Year() {
+    if (!detail) return;
+    const ok = window.confirm(`Activate 1-year annual subscription for "${detail.company.name}"?`);
+    if (!ok) return;
+
+    setActionBusy(true);
+    try {
+      await activateSub({ data: { companyId, months: 12 } });
+      toast.success("1-Year Annual Subscription Activated!");
+      const [d, s] = await Promise.all([
+        fetchDetail({ data: { companyId } }),
+        fetchStats({ data: { companyId } }),
+      ]);
+      setDetail(d);
+      setStats(s);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function handleExtendTrial() {
+    if (!detail) return;
+    const ok = window.confirm(`Extend 14-day trial for "${detail.company.name}"?`);
+    if (!ok) return;
+
+    setActionBusy(true);
+    try {
+      await extendTrial({ data: { companyId, days: 14 } });
+      toast.success("Trial extended by 14 days!");
+      const [d, s] = await Promise.all([
+        fetchDetail({ data: { companyId } }),
+        fetchStats({ data: { companyId } }),
+      ]);
+      setDetail(d);
+      setStats(s);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground text-sm">
@@ -82,6 +141,9 @@ function TenantDetail() {
 
   const { company, members, workers } = detail;
   const activeWorkers = workers.filter((w) => w.status === "active");
+  const subStatus = (company as any).subscription_status || getSubscriptionStatus(company);
+  const badge = getSubscriptionBadge(subStatus);
+  const ownerPhone = company.phone;
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,6 +164,100 @@ function TenantDetail() {
       </header>
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+        {/* Subscription & Plan Card */}
+        <section className="rounded-xl border bg-card shadow-sm p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-4">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold text-base">Subscription & Plan</h2>
+              <span
+                className={`text-xs px-2.5 py-0.5 rounded-full font-medium border ${badge.badgeClass}`}
+              >
+                {badge.label}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-xs"
+                onClick={handleActivate1Year}
+                disabled={actionBusy}
+              >
+                {actionBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5 mr-1" />
+                )}
+                Activate 1 Year Plan
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleExtendTrial}
+                disabled={actionBusy}
+              >
+                <Clock className="h-3.5 w-3.5 mr-1" />
+                Extend 14 Days
+              </Button>
+
+              {ownerPhone && (
+                <Button asChild size="sm" variant="outline">
+                  <a
+                    href={`https://wa.me/${ownerPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                      `Hi ${company.name}, regarding your BhaiBiz subscription...`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5"
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
+                    WhatsApp Owner
+                  </a>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 text-sm">
+            <div>
+              <span className="text-xs text-muted-foreground block">Plan Type</span>
+              <span className="font-medium">
+                {subStatus.isPaid ? "Paid Annual Plan" : "14-Day Free Trial"}
+              </span>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground block">
+                {subStatus.isPaid ? "Annual Plan Expires On" : "Trial Ends On"}
+              </span>
+              <span className="font-medium">
+                {new Date(subStatus.subscriptionExpiresAt || subStatus.trialEndsAt).toLocaleDateString(
+                  "en-IN",
+                  { day: "numeric", month: "short", year: "numeric" }
+                )}
+              </span>
+            </div>
+            <div>
+              <span className="text-xs text-muted-foreground block">Status / Days Remaining</span>
+              <span className="font-medium">
+                {subStatus.isExpired ? (
+                  <span className="text-rose-600 font-semibold">Expired</span>
+                ) : (
+                  <span>{subStatus.daysRemaining} days remaining</span>
+                )}
+              </span>
+            </div>
+          </div>
+
+          {(company as any).subscription_notes && (
+            <div className="text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-dashed">
+              <span className="font-medium text-foreground">Notes:</span>{" "}
+              {(company as any).subscription_notes}
+            </div>
+          )}
+        </section>
+
         {/* Company info */}
         <section className="rounded-xl border bg-card shadow-sm p-5 grid gap-3 sm:grid-cols-2">
           <InfoRow icon={Building2} label="Name" value={company.name} />

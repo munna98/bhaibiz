@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { isSuperAdminEmail } from "@/lib/superadmin";
+import { getSubscriptionStatus } from "@/lib/subscription";
 
 function assertSuperAdmin(email: string | undefined) {
   if (!isSuperAdminEmail(email)) {
@@ -19,7 +20,7 @@ export const listTenants = createServerFn({ method: "GET" })
 
     const { data: companies, error } = await supabaseAdmin
       .from("companies")
-      .select("id, name, phone, address, receipt_prefix, created_at, created_by")
+      .select("id, name, phone, address, receipt_prefix, created_at, created_by, trial_ends_at, subscription_expires_at, subscription_notes")
       .order("created_at", { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -96,12 +97,14 @@ export const listTenants = createServerFn({ method: "GET" })
         (ownerUserId ? profileMap[ownerUserId]?.email : null) ||
         null;
       const ownerName = ownerUserId ? profileMap[ownerUserId]?.full_name || null : null;
+      const subStatus = getSubscriptionStatus(c);
 
       return {
         ...c,
         owner_id: ownerUserId || null,
         owner_email: ownerEmail,
         owner_name: ownerName,
+        subscription_status: subStatus,
         member_count: memberCounts[c.id] ?? 0,
         worker_count: workerCounts[c.id] ?? 0,
         active_worker_count: activeWorkerCounts[c.id] ?? 0,
@@ -127,7 +130,7 @@ export const getTenantDetail = createServerFn({ method: "GET" })
     const [companyRes, membersRes, workersRes] = await Promise.all([
       supabaseAdmin
         .from("companies")
-        .select("id, name, phone, address, receipt_prefix, created_at, created_by")
+        .select("id, name, phone, address, receipt_prefix, created_at, created_by, trial_ends_at, subscription_expires_at, subscription_notes")
         .eq("id", data.companyId)
         .single(),
 
@@ -183,6 +186,7 @@ export const getTenantDetail = createServerFn({ method: "GET" })
         ...companyRes.data,
         owner_email: ownerEmail,
         owner_name: ownerName,
+        subscription_status: getSubscriptionStatus(companyRes.data),
       },
       members,
       workers: workersRes.data ?? [],
@@ -282,4 +286,69 @@ export const getTenantStats = createServerFn({ method: "GET" })
       total_collected_paise: totalCollected,
       advance_outstanding_paise: totalAdvances - totalRepayments,
     };
+  });
+
+// ---------------------------------------------------------------------------
+// activateCompanySubscription — activates paid annual plan for a tenant
+// ---------------------------------------------------------------------------
+export const activateCompanySubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => {
+    if (typeof input !== "object" || input === null || !("companyId" in input)) {
+      throw new Error("companyId is required");
+    }
+    return input as { companyId: string; months?: number; notes?: string };
+  })
+  .handler(async ({ data, context }) => {
+    assertSuperAdmin(context.claims.email as string | undefined);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const months = data.months && data.months > 0 ? data.months : 12; // default 1 year
+    const newExpiresAt = new Date(Date.now() + months * 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { error } = await supabaseAdmin
+      .from("companies")
+      .update({
+        subscription_expires_at: newExpiresAt,
+        subscription_notes:
+          data.notes ||
+          `Activated for ${months} months by Super Admin on ${new Date().toLocaleDateString("en-IN")}`,
+      })
+      .eq("id", data.companyId);
+
+    if (error) throw new Error(error.message);
+    return { ok: true, expiresAt: newExpiresAt };
+  });
+
+// ---------------------------------------------------------------------------
+// extendCompanyTrial — extends or resets free trial for a tenant
+// ---------------------------------------------------------------------------
+export const extendCompanyTrial = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) => {
+    if (typeof input !== "object" || input === null || !("companyId" in input)) {
+      throw new Error("companyId is required");
+    }
+    return input as { companyId: string; days?: number; notes?: string };
+  })
+  .handler(async ({ data, context }) => {
+    assertSuperAdmin(context.claims.email as string | undefined);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const days = data.days && data.days > 0 ? data.days : 14;
+    const newTrialEnds = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+    const { error } = await supabaseAdmin
+      .from("companies")
+      .update({
+        trial_ends_at: newTrialEnds,
+        subscription_expires_at: null,
+        subscription_notes:
+          data.notes ||
+          `Trial extended by ${days} days by Super Admin on ${new Date().toLocaleDateString("en-IN")}`,
+      })
+      .eq("id", data.companyId);
+
+    if (error) throw new Error(error.message);
+    return { ok: true, trialEndsAt: newTrialEnds };
   });

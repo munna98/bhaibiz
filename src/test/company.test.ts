@@ -83,7 +83,7 @@ describe("Company and Membership utilities", () => {
 
     const result = await (query.queryFn as () => Promise<MyMembership[]>)();
     expect(mockSelect).toHaveBeenCalledWith(
-      "company_id, company_name, role, company:companies(id, name, phone, address, receipt_prefix)"
+      "company_id, company_name, role, company:companies(id, name, phone, address, receipt_prefix, created_at, trial_ends_at, subscription_expires_at)"
     );
     expect(result).toHaveLength(1);
     expect(result[0]?.company_name).toBe("Alpha Corp");

@@ -471,6 +471,9 @@ export type Database = {
           name: string
           phone: string | null
           receipt_prefix: string
+          subscription_expires_at: string | null
+          subscription_notes: string | null
+          trial_ends_at: string | null
           worker_seq: number
         }
         Insert: {
@@ -481,6 +484,9 @@ export type Database = {
           name: string
           phone?: string | null
           receipt_prefix?: string
+          subscription_expires_at?: string | null
+          subscription_notes?: string | null
+          trial_ends_at?: string | null
           worker_seq?: number
         }
         Update: {
@@ -491,6 +497,9 @@ export type Database = {
           name?: string
           phone?: string | null
           receipt_prefix?: string
+          subscription_expires_at?: string | null
+          subscription_notes?: string | null
+          trial_ends_at?: string | null
           worker_seq?: number
         }
         Relationships: []

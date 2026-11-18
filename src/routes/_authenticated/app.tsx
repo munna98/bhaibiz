@@ -50,6 +50,8 @@ import { Button } from "@/components/ui/button";
 import { REPORT_CONFIG_ITEMS, type ReportKind } from "@/lib/report-data";
 import { getImpersonatedCompany } from "@/lib/superadmin.functions";
 import { isSuperAdminEmail } from "@/lib/superadmin";
+import { SubscriptionBanner } from "@/components/SubscriptionBanner";
+import { getSubscriptionStatus } from "@/lib/subscription";
 
 export const Route = createFileRoute("/_authenticated/app")({
   loader: async ({ context }) => {
@@ -262,6 +264,8 @@ function ShellContent({
     { to: "/app/more", label: "More", icon: MoreHorizontal, show: true },
   ] as const;
 
+  const subStatus = getSubscriptionStatus(active.company);
+
   return (
     <ActiveMembershipContext.Provider value={{ active, all }}>
       <aside className="app-navigation hidden w-60 flex-col bg-sidebar p-4 text-sidebar-foreground md:flex">
@@ -378,9 +382,17 @@ function ShellContent({
         </Button>
       </header>
 
-      <main className="min-w-0 flex-1 px-4 pb-24 pt-5 md:px-8 md:pb-8 print:p-0">
-        <Outlet key={active.company_id} />
-      </main>
+      <div className="flex-1 flex flex-col min-w-0">
+        {active.role === "owner" && (
+          <SubscriptionBanner
+            status={subStatus}
+            companyName={active.company_name || active.company.name}
+          />
+        )}
+        <main className="min-w-0 flex-1 px-4 pb-24 pt-5 md:px-8 md:pb-8 print:p-0">
+          <Outlet key={active.company_id} />
+        </main>
+      </div>
 
       <nav className="app-navigation fixed inset-x-0 bottom-0 flex border-t bg-card md:hidden">
         {mobileNav

@@ -24,7 +24,16 @@ export type MyMembership = {
   company_id: string;
   company_name: string | null;
   role: AppRole;
-  company: { id: string; name: string; phone: string | null; address: string | null; receipt_prefix: string };
+  company: {
+    id: string;
+    name: string;
+    phone: string | null;
+    address: string | null;
+    receipt_prefix: string;
+    created_at?: string;
+    trial_ends_at?: string | null;
+    subscription_expires_at?: string | null;
+  };
 };
 
 export const myMembershipsQuery = () =>
@@ -36,7 +45,9 @@ export const myMembershipsQuery = () =>
       await supabase.rpc("accept_my_invites");
       const { data, error } = await supabase
         .from("memberships")
-        .select("company_id, company_name, role, company:companies(id, name, phone, address, receipt_prefix)")
+        .select(
+          "company_id, company_name, role, company:companies(id, name, phone, address, receipt_prefix, created_at, trial_ends_at, subscription_expires_at)"
+        )
         .eq("user_id", u.user.id)
         .order("created_at");
       if (error) throw error;
