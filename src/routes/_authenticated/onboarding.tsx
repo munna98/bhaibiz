@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { myMembershipsQuery, getActiveCompanyId, setActiveCompanyId } from "@/lib/company";
+import { setActiveCompanyId } from "@/lib/company";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -35,22 +35,6 @@ function Onboarding() {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [busy, setBusy] = useState(false);
-
-  const { data: memberships } = useQuery(myMembershipsQuery());
-
-  useEffect(() => {
-    if (memberships && memberships.length > 0) {
-      if (!getActiveCompanyId()) {
-        const first = memberships[0];
-        if (first) setActiveCompanyId(first.company_id);
-      }
-      supabase.auth.signOut().then(() => {
-        qc.clear();
-        toast.success(t("Company created! Please sign in to continue."));
-        navigate({ to: "/auth" });
-      });
-    }
-  }, [memberships, navigate, qc, t]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
