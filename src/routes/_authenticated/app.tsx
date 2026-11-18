@@ -6,7 +6,7 @@ import {
   useNavigate,
   useLocation,
 } from "@tanstack/react-router";
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import {
   CalendarCheck,
   Wallet,
@@ -33,6 +33,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import {
   myMembershipsQuery,
+  myProfileQuery,
   pickActive,
   ROLE_LABELS,
   setActiveCompanyId,
@@ -209,6 +210,12 @@ function ShellContent({
   const location = useLocation();
   const isOwner = active.role === "owner";
   const t = useT();
+  const { data: profile } = useQuery(myProfileQuery());
+  const userDisplay =
+    (profile?.username ? `@${profile.username}` : null) ??
+    (profile?.email && !profile.email.endsWith("@staff.bhaibiz.internal") ? profile.email : null) ??
+    profile?.full_name ??
+    (profile?.email || "");
 
   const isReportsPath = location.pathname.startsWith("/app/reports");
   const currentReportKind = isReportsPath
@@ -277,7 +284,11 @@ function ShellContent({
           BhaiBiz
         </div>
         {companyPicker}
-        <div className="text-xs opacity-70">{t(ROLE_LABELS[active.role])}</div>
+        {userDisplay && (
+          <div className="text-xs opacity-70 truncate mt-0.5" title={userDisplay}>
+            {userDisplay}
+          </div>
+        )}
         <div className="mt-4 text-sidebar-foreground">
           <LanguageSelect />
         </div>
@@ -373,7 +384,11 @@ function ShellContent({
         <div className="min-w-0 flex-1 pr-3">
           <div className="font-bold text-sidebar-primary">BhaiBiz</div>
           {companyPicker}
-          <div className="text-xs opacity-80">{t(ROLE_LABELS[active.role])}</div>
+          {userDisplay && (
+            <div className="text-xs opacity-80 truncate mt-0.5" title={userDisplay}>
+              {userDisplay}
+            </div>
+          )}
         </div>
         <Button
           size="icon"

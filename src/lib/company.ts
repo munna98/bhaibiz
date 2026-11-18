@@ -55,6 +55,26 @@ export const myMembershipsQuery = () =>
     },
   });
 
+export const myProfileQuery = () =>
+  queryOptions({
+    queryKey: ["my-profile"],
+    queryFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, username")
+        .eq("id", u.user.id)
+        .maybeSingle();
+      return {
+        id: u.user.id,
+        email: data?.email || u.user.email || null,
+        full_name: data?.full_name || (u.user.user_metadata?.full_name as string | undefined) || null,
+        username: data?.username || (u.user.user_metadata?.username as string | undefined) || null,
+      };
+    },
+  });
+
 const KEY = "bhaibiz.activeCompany";
 export const getActiveCompanyId = () =>
   typeof window === "undefined" ? null : window.localStorage.getItem(KEY);
