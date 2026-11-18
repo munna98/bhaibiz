@@ -17,6 +17,7 @@ import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/ap
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
 import { Route as AuthConfirmRouteImport } from './routes/auth_.confirm'
 import { Route as AuthenticatedAppIndexRouteImport } from './routes/_authenticated/app/index'
+import { Route as AuthenticatedAppAccommodationsRouteImport } from './routes/_authenticated/app/accommodations'
 import { Route as AuthenticatedAppAttendanceRouteImport } from './routes/_authenticated/app/attendance'
 import { Route as AuthenticatedAppAuditRouteImport } from './routes/_authenticated/app/audit'
 import { Route as AuthenticatedAppCollectRouteImport } from './routes/_authenticated/app/collect'
@@ -70,6 +71,12 @@ const AuthenticatedAppIndexRoute = AuthenticatedAppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const AuthenticatedAppAccommodationsRoute =
+  AuthenticatedAppAccommodationsRouteImport.update({
+    id: '/accommodations',
+    path: '/accommodations',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppAttendanceRoute =
   AuthenticatedAppAttendanceRouteImport.update({
     id: '/attendance',
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AuthenticatedAppRouteWithChildren
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/app/accommodations': typeof AuthenticatedAppAccommodationsRoute
   '/app/attendance': typeof AuthenticatedAppAttendanceRoute
   '/app/audit': typeof AuthenticatedAppAuditRoute
   '/app/collect': typeof AuthenticatedAppCollectRoute
@@ -176,6 +184,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/auth/confirm': typeof AuthConfirmRoute
+  '/app/accommodations': typeof AuthenticatedAppAccommodationsRoute
   '/app/attendance': typeof AuthenticatedAppAttendanceRoute
   '/app/audit': typeof AuthenticatedAppAuditRoute
   '/app/collect': typeof AuthenticatedAppCollectRoute
@@ -201,6 +210,7 @@ export interface FileRoutesById {
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/auth_/confirm': typeof AuthConfirmRoute
+  '/_authenticated/app/accommodations': typeof AuthenticatedAppAccommodationsRoute
   '/_authenticated/app/attendance': typeof AuthenticatedAppAttendanceRoute
   '/_authenticated/app/audit': typeof AuthenticatedAppAuditRoute
   '/_authenticated/app/collect': typeof AuthenticatedAppCollectRoute
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/onboarding'
     | '/auth/confirm'
+    | '/app/accommodations'
     | '/app/attendance'
     | '/app/audit'
     | '/app/collect'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/onboarding'
     | '/auth/confirm'
+    | '/app/accommodations'
     | '/app/attendance'
     | '/app/audit'
     | '/app/collect'
@@ -270,6 +282,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app'
     | '/_authenticated/onboarding'
     | '/auth_/confirm'
+    | '/_authenticated/app/accommodations'
     | '/_authenticated/app/attendance'
     | '/_authenticated/app/audit'
     | '/_authenticated/app/collect'
@@ -351,6 +364,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AuthenticatedAppIndexRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_authenticated/app/accommodations': {
+      id: '/_authenticated/app/accommodations'
+      path: '/accommodations'
+      fullPath: '/app/accommodations'
+      preLoaderRoute: typeof AuthenticatedAppAccommodationsRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
     '/_authenticated/app/attendance': {
@@ -455,6 +475,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAppRouteChildren {
+  AuthenticatedAppAccommodationsRoute: typeof AuthenticatedAppAccommodationsRoute
   AuthenticatedAppAttendanceRoute: typeof AuthenticatedAppAttendanceRoute
   AuthenticatedAppAuditRoute: typeof AuthenticatedAppAuditRoute
   AuthenticatedAppCollectRoute: typeof AuthenticatedAppCollectRoute
@@ -471,6 +492,7 @@ interface AuthenticatedAppRouteChildren {
 }
 
 const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
+  AuthenticatedAppAccommodationsRoute: AuthenticatedAppAccommodationsRoute,
   AuthenticatedAppAttendanceRoute: AuthenticatedAppAttendanceRoute,
   AuthenticatedAppAuditRoute: AuthenticatedAppAuditRoute,
   AuthenticatedAppCollectRoute: AuthenticatedAppCollectRoute,

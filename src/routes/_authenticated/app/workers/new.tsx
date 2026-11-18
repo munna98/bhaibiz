@@ -1,5 +1,5 @@
 import { useT } from "@/lib/i18n";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect } from "react";
@@ -11,6 +11,7 @@ import { AadhaarCopyPicker } from "@/components/workers/AadhaarCopyPicker";
 import { canManageWorkers, formatINR, rupeesToPaise } from "@/lib/workers";
 import { createWorker } from "@/lib/workers.functions";
 import { uploadAadhaarDoc, uploadWorkerPhoto } from "@/lib/worker-uploads";
+import { myMembershipsQuery, pickActive } from "@/lib/company";
 import { useActiveMembership } from "../../app";
 import {
   checkPersonal, emptyPersonal, Field, WorkerPersonalFields, type PersonalErrors,
@@ -31,6 +32,11 @@ export const Route = createFileRoute("/_authenticated/app/workers/new")({
       { property: "og:description", content: "Register a worker with Aadhaar and daily rate." },
     ],
   }),
+  loader: async ({ context }) => {
+    const active = pickActive(await context.queryClient.ensureQueryData(myMembershipsQuery()));
+    if (!active) return;
+    if (active.role === "operator") throw redirect({ to: "/app" });
+  },
   component: NewWorkerPage,
 });
 
@@ -121,7 +127,7 @@ function NewWorkerPage() {
         {step === 0 && (
           <div className="space-y-5">
             <PhotoPicker file={photo} onChange={setPhoto} />
-            <WorkerPersonalFields value={personal} onChange={setPersonal} errors={errors} />
+            <WorkerPersonalFields value={personal} onChange={setPersonal} errors={errors} companyId={active.company_id} />
           </div>
         )}
 

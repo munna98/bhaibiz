@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BarChart3, ChevronDown, ChevronRight, History, Settings, Users } from "lucide-react";
+import { BarChart3, Building2, ChevronDown, ChevronRight, History, Settings, Users } from "lucide-react";
 import { useState } from "react";
 import { useActiveMembership, REPORT_NAV_ITEMS } from "../app";
 import { canViewReports } from "@/lib/report-data";
@@ -73,6 +73,13 @@ function MorePage() {
               </div>
             )}
           </div>
+        )}
+
+        {(isOwner || active.role === "manager") && (
+          <Link to="/app/accommodations" className="flex items-center gap-3 py-4 text-primary">
+            <Building2 className="h-5 w-5" />
+            {t("Accommodations")}
+          </Link>
         )}
 
         {isOwner && (

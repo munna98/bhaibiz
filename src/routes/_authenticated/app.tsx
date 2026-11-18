@@ -26,6 +26,7 @@ import {
   HandCoins,
   ShieldAlert,
   ArrowLeft,
+  Building2,
 } from "lucide-react";
 import { useEffect, useState, createContext, useContext } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -249,18 +250,21 @@ function ShellContent({
       </div>
     );
 
+  const isManager = active.role === "owner" || active.role === "manager";
+
   const nav = [
     { to: "/app", label: "Dashboard", icon: LayoutDashboard, show: true },
     { to: "/app/attendance", label: "Attendance", icon: CalendarCheck, show: true },
-    { to: "/app/collect", label: "Collect", icon: Wallet, show: active.role !== "operator" },
-    { to: "/app/workers", label: "Workers", icon: HardHat, show: true },
+    { to: "/app/collect", label: "Collect", icon: Wallet, show: true },
+    { to: "/app/accommodations", label: "Accommodations", icon: Building2, show: isManager },
+    { to: "/app/workers", label: "Workers", icon: HardHat, show: active.role !== "operator" },
     { to: "/app/reports", label: "Reports", icon: BarChart3, show: active.role !== "operator" },
     { to: "/app/team", label: "Team", icon: Users, show: isOwner },
     { to: "/app/settings", label: "Company", icon: Settings, show: isOwner },
   ] as const;
 
   const mobileNav = [
-    ...nav.slice(0, 4),
+    ...nav.filter((n) => n.show).slice(0, 4),
     { to: "/app/more", label: "More", icon: MoreHorizontal, show: true },
   ] as const;
 

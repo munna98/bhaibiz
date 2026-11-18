@@ -21,6 +21,14 @@ import { reportsQuery } from "@/lib/reports";
 import { workerActiveOn } from "@/lib/report-data";
 import { invalidateMoney } from "@/lib/money";
 import { DateInput } from "@/components/ui/date-input";
+import { accommodationsQuery } from "@/lib/accommodations";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/app/attendance")({
   head: () => ({
@@ -58,6 +66,7 @@ function AttendancePage() {
   const [date, setDate] = useState(today);
   const [view, setView] = useState<ViewMode>(getInitialView);
   const [q, setQ] = useState("");
+  const [accFilter, setAccFilter] = useState<string>("all");
   const [ask, setAsk] = useState<{ workerId: string; name: string; status: AttendanceStatus } | null>(null);
   const [reason, setReason] = useState("");
   const qc = useQueryClient();
@@ -72,14 +81,21 @@ function AttendancePage() {
   };
 
   const { data: workers } = useSuspenseQuery(workersQuery(cid));
+  const accs = useQuery(accommodationsQuery(cid));
   const att = useQuery(attendanceOnQuery(cid, date));
   const history = useQuery(reportsQuery(cid, today));
   const marks = att.data?.byWorker ?? {};
   const editable = canEditDate(role, date, today);
 
   const list = useMemo(
-    () => workers.filter((w) => w.joining_date <= date && (workerActiveOn(w, date, history.data?.history ?? []) || marks[w.id])),
-    [workers, date, marks, history.data],
+    () =>
+      workers.filter(
+        (w) =>
+          w.joining_date <= date &&
+          (workerActiveOn(w, date, history.data?.history ?? []) || marks[w.id]) &&
+          (accFilter === "all" || w.accommodation_id === accFilter)
+      ),
+    [workers, date, marks, history.data, accFilter],
   );
   const markOf = (id: string): Mark => marks[id] ?? "pending";
   const sum = summarize(list.map((w) => markOf(w.id)));
@@ -171,6 +187,23 @@ function AttendancePage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder={t("Search name, ID or mobile")} value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
         </div>
+        {accs.data && accs.data.length > 0 && (
+          <div className="w-full sm:w-52">
+            <Select value={accFilter} onValueChange={setAccFilter}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t("All accommodations")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("All accommodations")}</SelectItem>
+                {accs.data.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="flex items-center justify-end gap-2">
           {editable && sum.pending > 0 && (
             <div className="flex gap-2">
@@ -207,7 +240,13 @@ function AttendancePage() {
 
       {view === "list" ? (
         <ul className="mt-4 divide-y rounded-xl border bg-card">
-          {shown.length === 0 && <li className="p-6 text-center text-sm text-muted-foreground">{t("No workers for this date.")}</li>}
+          {shown.length === 0 && (
+            <li className="p-6 text-center text-sm text-muted-foreground">
+              {workers.length === 0 && role === "operator"
+                ? t("No accommodations or workers assigned yet. Please contact your company owner.")
+                : t("No workers for this date.")}
+            </li>
+          )}
           {shown.map((w) => {
             const m = markOf(w.id);
             return (
@@ -236,7 +275,9 @@ function AttendancePage() {
         <div className="mt-4">
           {shown.length === 0 ? (
             <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-              {t("No workers for this date.")}
+              {workers.length === 0 && role === "operator"
+                ? t("No accommodations or workers assigned yet. Please contact your company owner.")
+                : t("No workers for this date.")}
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-2.5 md:grid-cols-5 lg:grid-cols-6">

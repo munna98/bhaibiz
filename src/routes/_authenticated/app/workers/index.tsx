@@ -1,5 +1,5 @@
 import { useT } from "@/lib/i18n";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
@@ -27,6 +27,7 @@ export const Route = createFileRoute("/_authenticated/app/workers/")({
   loader: async ({ context }) => {
     const active = pickActive(await context.queryClient.ensureQueryData(myMembershipsQuery()));
     if (!active) return;
+    if (active.role === "operator") throw redirect({ to: "/app" });
     await Promise.all([
       context.queryClient.ensureQueryData(workersQuery(active.company_id)),
       context.queryClient.ensureQueryData(agreementsQuery(active.company_id)),

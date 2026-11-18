@@ -14,6 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
+      accommodations: {
+        Row: {
+          address: string | null
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accommodations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operator_accommodations: {
+        Row: {
+          accommodation_id: string
+          company_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          accommodation_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          accommodation_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_accommodations_accommodation_id_fkey"
+            columns: ["accommodation_id"]
+            isOneToOne: false
+            referencedRelation: "accommodations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "operator_accommodations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       adjustments: {
         Row: {
           amount_paise: number
@@ -897,6 +971,7 @@ export type Database = {
         Row: {
           aadhaar_hash: string
           aadhaar_last4: string
+          accommodation_id: string | null
           alt_mobile: string | null
           category: string | null
           company_id: string
@@ -920,6 +995,7 @@ export type Database = {
         Insert: {
           aadhaar_hash: string
           aadhaar_last4: string
+          accommodation_id?: string | null
           alt_mobile?: string | null
           category?: string | null
           company_id: string
@@ -943,6 +1019,7 @@ export type Database = {
         Update: {
           aadhaar_hash?: string
           aadhaar_last4?: string
+          accommodation_id?: string | null
           alt_mobile?: string | null
           category?: string | null
           company_id?: string

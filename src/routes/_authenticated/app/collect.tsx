@@ -1,5 +1,5 @@
 import { useT } from "@/lib/i18n";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { ArrowLeft, Search } from "lucide-react";
@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
 import { formatDate, formatINR, workersQuery } from "@/lib/workers";
-import { allocateFIFO, balancesQuery, canHandleMoney, invalidateMoney, unpaidDaysQuery } from "@/lib/money";
+import { allocateFIFO, balancesQuery, canRecordPayment, invalidateMoney, unpaidDaysQuery } from "@/lib/money";
 import { useActiveMembership } from "../app";
 import { WorkerAvatar, StatusBadge } from "@/components/workers/WorkerFields";
 import { AmountForm } from "@/components/money/AmountForm";
@@ -45,7 +45,7 @@ function CollectPage() {
   const [sel, setSel] = useState<string | null>(null);
   const due = useMemo(() => Object.fromEntries(balances.map((b) => [b.worker_id, b.outstanding])), [balances]);
 
-  if (!canHandleMoney(active.role)) return <p className="text-muted-foreground">{t("Your role can't record payments.")}</p>;
+  if (!canRecordPayment(active.role)) return <p className="text-muted-foreground">{t("Your role can't record payments.")}</p>;
   const worker = workers.find((w) => w.id === sel);
   if (worker) return <CollectFor worker={worker} due={due[worker.id] ?? 0} onBack={() => setSel(null)} />;
 

@@ -60,32 +60,64 @@ function Dashboard() {
   const att = view === "today" ? attToday : attYesterday;
   const coll = view === "today" ? collToday : collYesterday;
 
+  const isOperator = active.role === "operator";
+  const workerIds = new Set((workers.data ?? []).map((w) => w.id));
   const activeCount = workers.data?.filter((w) => w.status === "active").length;
   const inactiveCount = workers.data?.filter((w) => w.status === "inactive").length;
-  const marks = Object.values(att.data.byWorker);
-  const workedCount = marks?.filter((m) => m === "worked").length;
+  const workedCount = workers.data?.filter((w) => att.data.byWorker[w.id] === "worked").length;
+  const notWorkedCount = workers.data?.filter((w) => att.data.byWorker[w.id] === "not_worked").length;
   const pendingCount =
     workers.data && att.data
       ? workers.data.filter((w) => workerActiveOn(w, selectedDate, report.history) && !att.data.byWorker[w.id]).length
       : undefined;
 
-  const dayLabel = view === "today" ? t("today") : t("yesterday");
+  const scopedBalances = bal.data?.filter((b) => workerIds.has(b.worker_id)) ?? [];
+  const scopedCollected = report.payments
+    .filter((p) => p.paid_on === selectedDate && !p.voided_at && workerIds.has(p.worker_id))
+    .reduce((sum, p) => sum + p.amount_paise, 0);
 
-  const cards: { label: string; value: string | number | undefined }[] = [
+  const baseCards: { label: string; value: string | number | undefined; show?: boolean }[] = [
     { label: "Active workers", value: activeCount },
     { label: "Inactive workers", value: inactiveCount },
     { label: view === "today" ? "Worked today" : "Worked yesterday", value: workedCount },
-    { label: view === "today" ? "Not worked today" : "Not worked yesterday", value: marks.filter(m => m === "not_worked").length },
+    { label: view === "today" ? "Not worked today" : "Not worked yesterday", value: notWorkedCount },
     { label: view === "today" ? "Pending today" : "Pending yesterday", value: pendingCount },
-    { label: view === "today" ? "Commission earned today" : "Commission earned yesterday", value: att.data ? formatINR(att.data.earned) : undefined },
-    { label: view === "today" ? "Collected today" : "Collected yesterday", value: coll.data !== undefined ? formatINR(coll.data) : undefined },
-    { label: "Total outstanding", value: bal.data ? formatINR(totalOutstanding(bal.data)) : undefined },
-    { label: "Advance balance", value: formatINR(bal.data.filter(b => b.status === "active").reduce((sum, b) => sum + b.advance, 0)) },
+    {
+      label: view === "today" ? "Commission earned today" : "Commission earned yesterday",
+      value: att.data ? formatINR(att.data.earned) : undefined,
+    },
+    {
+      label: view === "today" ? "Collected today" : "Collected yesterday",
+      value: formatINR(isOperator ? scopedCollected : (coll.data ?? 0)),
+    },
+    {
+      label: "Total outstanding",
+      value: formatINR(totalOutstanding(isOperator ? scopedBalances : (bal.data ?? []))),
+    },
+    {
+      label: "Advance balance",
+      value: formatINR(
+        (bal.data ?? [])
+          .filter((b) => b.status === "active" && (!isOperator || workerIds.has(b.worker_id)))
+          .reduce((sum, b) => sum + b.advance, 0)
+      ),
+      show: !isOperator,
+    },
   ];
+
+  const cards = baseCards.filter((c) => c.show !== false);
 
   const trend = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(today, i - 6);
-    return { date, earned: report.commission.filter(c => c.work_date === date).reduce((sum, c) => sum + c.amount_paise, 0), collected: report.payments.filter(p => p.paid_on === date && !p.voided_at).reduce((sum, p) => sum + p.amount_paise, 0) };
+    return {
+      date,
+      earned: report.commission
+        .filter((c) => c.work_date === date && (!isOperator || workerIds.has(c.worker_id)))
+        .reduce((sum, c) => sum + c.amount_paise, 0),
+      collected: report.payments
+        .filter((p) => p.paid_on === date && !p.voided_at && (!isOperator || workerIds.has(p.worker_id)))
+        .reduce((sum, p) => sum + p.amount_paise, 0),
+    };
   });
 
   return (
@@ -122,9 +154,15 @@ function Dashboard() {
       </div>
       <section className="mt-8"><h2 className="text-lg font-semibold">{t("Last 7 days")}</h2><div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-y"><tr><th className="py-3">{t("Date")}</th><th>{t("Earned")}</th><th>{t("Collected")}</th></tr></thead><tbody>{trend.map(d => <tr className={`border-b ${d.date === selectedDate ? "bg-accent/20 font-medium" : ""}`} key={d.date}><td className="py-3">{formatDate(d.date)}{d.date === today ? <span className="ml-1.5 text-xs text-primary">{t("today")}</span> : d.date === yesterday ? <span className="ml-1.5 text-xs text-muted-foreground">{t("yesterday")}</span> : null}</td><td>{formatINR(d.earned)}</td><td>{formatINR(d.collected)}</td></tr>)}</tbody></table></div></section>
       {workers.data?.length === 0 ? (
-        <div className="mt-6 border-t py-6 text-sm text-muted-foreground">
-          {t("No workers yet")} · <Link to="/app/workers" className="font-medium text-primary underline">{t("Add your first worker")}</Link>
-        </div>
+        isOperator ? (
+          <div className="mt-6 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+            {t("No accommodations or workers assigned yet. Please contact your company owner.")}
+          </div>
+        ) : (
+          <div className="mt-6 border-t py-6 text-sm text-muted-foreground">
+            {t("No workers yet")} · <Link to="/app/workers" className="font-medium text-primary underline">{t("Add your first worker")}</Link>
+          </div>
+        )
       ) : pendingCount && view === "today" ? (
         <Link to="/app/attendance" className="mt-6 block rounded-xl border border-accent bg-accent/20 p-4 text-sm font-medium">
           {pendingCount} · {t("Pending today")} — {t("Attendance")} →

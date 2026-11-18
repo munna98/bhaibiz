@@ -1,8 +1,17 @@
 import { useT } from "@/lib/i18n";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { INDIAN_STATES, WORKER_CATEGORIES, normalizeMobile, todayISO, type Worker } from "@/lib/workers";
+import { accommodationsQuery } from "@/lib/accommodations";
 import { cn } from "@/lib/utils";
 import { DateInput } from "@/components/ui/date-input";
 
@@ -18,12 +27,14 @@ export type PersonalForm = {
   category: string;
   joining_date: string;
   notes: string;
+  accommodation_id?: string | null;
 };
 
 export function emptyPersonal(): PersonalForm {
   return {
     full_name: "", mobile: "", alt_mobile: "", native_state: "", native_address: "", kerala_address: "",
     emergency_name: "", emergency_phone: "", category: "", joining_date: todayISO(), notes: "",
+    accommodation_id: null,
   };
 }
 
@@ -32,6 +43,7 @@ export function personalFromWorker(w: Worker): PersonalForm {
     full_name: w.full_name, mobile: w.mobile, alt_mobile: w.alt_mobile ?? "", native_state: w.native_state ?? "",
     native_address: w.native_address ?? "", kerala_address: w.kerala_address ?? "", emergency_name: w.emergency_name ?? "",
     emergency_phone: w.emergency_phone ?? "", category: w.category ?? "", joining_date: w.joining_date, notes: w.notes ?? "",
+    accommodation_id: w.accommodation_id ?? null,
   };
 }
 
@@ -53,6 +65,7 @@ export function checkPersonal(f: PersonalForm): { errors: PersonalErrors; value:
       full_name: f.full_name.trim(),
       mobile: mobile ?? f.mobile,
       alt_mobile: f.alt_mobile.trim() ? normalizeMobile(f.alt_mobile) ?? f.alt_mobile : "",
+      accommodation_id: f.accommodation_id || null,
     },
   };
 }
@@ -74,8 +87,24 @@ export function Field({ label, error, required, children, className, asDiv }: { 
   );
 }
 
-export function WorkerPersonalFields({ value, onChange, errors }: { value: PersonalForm; onChange: (v: PersonalForm) => void; errors: PersonalErrors }) {
+export function WorkerPersonalFields({
+  value,
+  onChange,
+  errors,
+  companyId,
+}: {
+  value: PersonalForm;
+  onChange: (v: PersonalForm) => void;
+  errors: PersonalErrors;
+  companyId?: string;
+}) {
   const t = useT();
+  const accQuery = useQuery({
+    ...(companyId ? accommodationsQuery(companyId) : { queryKey: ["accommodations", ""], queryFn: () => [] }),
+    enabled: !!companyId,
+  });
+  const accommodations = accQuery.data ?? [];
+
   const set = (k: keyof PersonalForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange({ ...value, [k]: e.target.value });
   return (
     <div className="grid gap-4 sm:grid-cols-2">
@@ -95,6 +124,26 @@ export function WorkerPersonalFields({ value, onChange, errors }: { value: Perso
       <Field label="Joining date" required error={errors.joining_date}>
         <DateInput value={value.joining_date} onChange={(v) => onChange({ ...value, joining_date: v })} max={todayISO()} />
       </Field>
+      {companyId && accommodations.length > 0 && (
+        <Field label="Accommodation" className="sm:col-span-2" asDiv>
+          <Select
+            value={value.accommodation_id || "none"}
+            onValueChange={(v) => onChange({ ...value, accommodation_id: v === "none" ? null : v })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder={t("Select accommodation (optional)")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">{t("No accommodation")}</SelectItem>
+              {accommodations.map((acc) => (
+                <SelectItem key={acc.id} value={acc.id}>
+                  {acc.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+      )}
       <Field label="Home state">
         <Input value={value.native_state} onChange={set("native_state")} list="bb-states" placeholder="West Bengal" />
         <datalist id="bb-states">{INDIAN_STATES.map((s) => <option key={s} value={s} />)}</datalist>

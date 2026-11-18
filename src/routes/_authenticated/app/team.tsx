@@ -4,10 +4,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Trash2, KeyRound, Copy, Check, Share2, Sparkles, UserPlus } from "lucide-react";
+import { Trash2, KeyRound, Copy, Check, Share2, Sparkles, UserPlus, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { INVITABLE_ROLES, ROLE_HINTS, ROLE_LABELS, type AppRole } from "@/lib/company";
 import { createStaffMember, resetStaffPassword } from "@/lib/staff.functions";
+import {
+  accommodationsQuery,
+  operatorAccommodationsQuery,
+  setOperatorAccommodations,
+} from "@/lib/accommodations";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useActiveMembership } from "../app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +73,7 @@ function TeamPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>("operator");
+  const [selectedAccs, setSelectedAccs] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Created credentials modal state
@@ -77,6 +84,14 @@ function TeamPage() {
   const [resetTarget, setResetTarget] = useState<{ userId: string; name: string } | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [isResetting, setIsResetting] = useState(false);
+
+  // Operator accommodations modal state
+  const [editAccTarget, setEditAccTarget] = useState<{ userId: string; name: string } | null>(null);
+  const [editAccSelected, setEditAccSelected] = useState<string[]>([]);
+  const [isSavingAcc, setIsSavingAcc] = useState(false);
+
+  const accommodations = useQuery(accommodationsQuery(cid));
+  const opAccs = useQuery(operatorAccommodationsQuery(cid));
 
   const members = useQuery({
     queryKey: ["members", cid],
@@ -112,6 +127,7 @@ function TeamPage() {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["members", cid] });
     qc.invalidateQueries({ queryKey: ["invites", cid] });
+    qc.invalidateQueries({ queryKey: ["operator-accommodations", cid] });
   };
 
   async function handleAddMember(e: React.FormEvent) {
@@ -135,7 +151,7 @@ function TeamPage() {
 
     setIsSubmitting(true);
     try {
-      await createMemberFn({
+      const res = await createMemberFn({
         data: {
           companyId: cid,
           fullName: cleanName,
@@ -144,6 +160,14 @@ function TeamPage() {
           role: role as "manager" | "operator" | "accountant",
         },
       });
+
+      if (role === "operator" && selectedAccs.length > 0 && res?.userId) {
+        await setOperatorAccommodations({
+          companyId: cid,
+          userId: res.userId,
+          accommodationIds: selectedAccs,
+        });
+      }
 
       // Show credentials dialog
       setCreatedCreds({
@@ -158,12 +182,32 @@ function TeamPage() {
       setUsername("");
       setPassword("");
       setRole("operator");
+      setSelectedAccs([]);
       toast.success(t("Member added"));
       refresh();
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleSaveOperatorAccs() {
+    if (!editAccTarget) return;
+    setIsSavingAcc(true);
+    try {
+      await setOperatorAccommodations({
+        companyId: cid,
+        userId: editAccTarget.userId,
+        accommodationIds: editAccSelected,
+      });
+      await qc.invalidateQueries({ queryKey: ["operator-accommodations", cid] });
+      toast.success(t("Accommodations updated"));
+      setEditAccTarget(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update accommodations");
+    } finally {
+      setIsSavingAcc(false);
     }
   }
 
@@ -306,6 +350,34 @@ function TeamPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {role === "operator" && accommodations.data && accommodations.data.length > 0 && (
+            <div className="sm:col-span-2 space-y-2 rounded-lg border bg-muted/30 p-3">
+              <Label className="text-xs font-medium text-foreground">
+                {t("Assign accommodations (operator can only access these workers)")}
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                {accommodations.data.map((acc) => {
+                  const checked = selectedAccs.includes(acc.id);
+                  return (
+                    <label
+                      key={acc.id}
+                      className="flex items-center gap-2 text-xs text-foreground cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(c) => {
+                          if (c) setSelectedAccs((prev) => [...prev, acc.id]);
+                          else setSelectedAccs((prev) => prev.filter((id) => id !== acc.id));
+                        }}
+                      />
+                      <span>{acc.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between pt-1">
@@ -333,12 +405,36 @@ function TeamPage() {
                 ? m.profile.email
                 : "";
 
+            const assignedAccIds =
+              opAccs.data?.filter((oa) => oa.user_id === m.user_id).map((oa) => oa.accommodation_id) || [];
+            const assignedAccs =
+              accommodations.data?.filter((a) => assignedAccIds.includes(a.id)) || [];
+
             return (
               <li key={m.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{displayName}</div>
                   {subtitle && (
                     <div className="truncate text-xs text-muted-foreground">{subtitle}</div>
+                  )}
+                  {m.role === "operator" && (
+                    <div className="mt-1 flex flex-wrap items-center gap-1">
+                      {assignedAccs.length > 0 ? (
+                        assignedAccs.map((a) => (
+                          <span
+                            key={a.id}
+                            className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary"
+                          >
+                            <Building2 className="h-3 w-3" />
+                            {a.name}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[11px] text-amber-600 dark:text-amber-400">
+                          {t("No accommodations assigned")}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
 
@@ -348,6 +444,21 @@ function TeamPage() {
                   </span>
                 ) : (
                   <div className="flex items-center gap-2">
+                    {m.role === "operator" && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title={t("Assign accommodations")}
+                        aria-label={t("Assign accommodations")}
+                        onClick={() => {
+                          setEditAccTarget({ userId: m.user_id, name: displayName });
+                          setEditAccSelected(assignedAccIds);
+                        }}
+                      >
+                        <Building2 className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                      </Button>
+                    )}
+
                     <Select value={m.role} onValueChange={(v) => changeRole(m.id, v as AppRole)}>
                       <SelectTrigger className="h-8 w-32">
                         <SelectValue />
@@ -505,6 +616,67 @@ function TeamPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Operator Accommodations Dialog */}
+      <Dialog open={!!editAccTarget} onOpenChange={(open) => !open && setEditAccTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Building2 className="h-5 w-5 text-primary" />
+              {t("Assign accommodations")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("Select accommodations for")} <strong>{editAccTarget?.name}</strong>. {t("Operators can only view and manage attendance & collections for their assigned workers.")}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-3">
+            {accommodations.data?.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t("No accommodations found. Create accommodations first under Accommodations.")}
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {accommodations.data?.map((acc) => {
+                  const checked = editAccSelected.includes(acc.id);
+                  return (
+                    <label
+                      key={acc.id}
+                      className="flex items-center gap-2.5 rounded-lg border p-2.5 hover:bg-muted/50 cursor-pointer text-sm"
+                    >
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(c) => {
+                          if (c) setEditAccSelected((prev) => [...prev, acc.id]);
+                          else setEditAccSelected((prev) => prev.filter((id) => id !== acc.id));
+                        }}
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-foreground">{acc.name}</div>
+                        {acc.address && <div className="text-xs text-muted-foreground">{acc.address}</div>}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditAccTarget(null)}
+              disabled={isSavingAcc}
+            >
+              {t("Cancel")}
+            </Button>
+            <Button onClick={handleSaveOperatorAccs} disabled={isSavingAcc}>
+              {isSavingAcc ? t("Saving…") : t("Save")}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

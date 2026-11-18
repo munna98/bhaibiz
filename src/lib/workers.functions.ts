@@ -19,6 +19,7 @@ const personalSchema = z.object({
   category: opt(60),
   joining_date: isoDate,
   notes: opt(1000),
+  accommodation_id: z.string().uuid().nullable().optional(),
 });
 
 const createSchema = z.object({

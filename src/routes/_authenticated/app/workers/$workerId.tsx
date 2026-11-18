@@ -1,5 +1,5 @@
 import { useT } from "@/lib/i18n";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Camera, Eye, FileText, FileUp, Pencil, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
+import { accommodationsQuery } from "@/lib/accommodations";
 import { formatAadhaar, maskAadhaar, validateAadhaar } from "@/lib/aadhaar";
 import {
   agreementsQuery, BUCKET, canChangeRate, canManageWorkers, canSeeAadhaar, documentsQuery, formatDate, formatINR,
@@ -41,6 +42,7 @@ export const Route = createFileRoute("/_authenticated/app/workers/$workerId")({
   loader: async ({ context }) => {
     const active = pickActive(await context.queryClient.ensureQueryData(myMembershipsQuery()));
     if (!active) return;
+    if (active.role === "operator") throw redirect({ to: "/app" });
     await Promise.all([
       context.queryClient.ensureQueryData(workersQuery(active.company_id)),
       context.queryClient.ensureQueryData(agreementsQuery(active.company_id)),
@@ -184,8 +186,11 @@ function Row({ label, value }: { label: string; value: string | null | undefined
 
 function Details({ worker }: { worker: Worker }) {
   const t = useT();
+  const accQuery = useQuery(accommodationsQuery(worker.company_id));
+  const acc = accQuery.data?.find((a) => a.id === worker.accommodation_id);
   return (
     <div className="grid rounded-xl border bg-card px-5 py-2 sm:grid-cols-2 sm:gap-x-6">
+      <Row label="Accommodation" value={acc?.name ?? t("Unassigned")} />
       <Row label="Mobile" value={worker.mobile} />
       <Row label="Other mobile" value={worker.alt_mobile} />
       <Row label="Home state" value={worker.native_state} />

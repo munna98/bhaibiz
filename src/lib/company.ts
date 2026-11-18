@@ -13,8 +13,8 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 
 export const ROLE_HINTS: Record<AppRole, string> = {
   owner: "Full control, waivers, Aadhaar, team",
-  manager: "Workers, attendance, payments",
-  operator: "Attendance (today and yesterday)",
+  manager: "Workers, accommodations, attendance, payments",
+  operator: "Attendance & collections for assigned workers",
   accountant: "Reports and payments, read-only workers",
 };
 

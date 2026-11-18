@@ -9,6 +9,7 @@ export const METHODS: { value: PayMethod; label: string }[] = [
 ];
 export const methodLabel = (m: PayMethod) => METHODS.find((x) => x.value === m)?.label ?? m;
 
+export const canRecordPayment = (_role: AppRole) => true;
 export const canHandleMoney = (role: AppRole) => role !== "operator";
 export const canAdjust = (role: AppRole) => role === "owner";
 

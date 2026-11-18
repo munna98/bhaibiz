@@ -54,7 +54,7 @@ export const workersQuery = (companyId: string) =>
     queryFn: async (): Promise<Worker[]> => {
       const { data, error } = await supabase
         .from("workers")
-        .select("id, company_id, worker_code, full_name, mobile, alt_mobile, category, joining_date, native_state, native_address, kerala_address, emergency_name, emergency_phone, notes, photo_path, status, aadhaar_last4, created_by, created_at, updated_at")
+        .select("id, company_id, worker_code, full_name, mobile, alt_mobile, category, joining_date, native_state, native_address, kerala_address, emergency_name, emergency_phone, notes, photo_path, status, aadhaar_last4, accommodation_id, created_by, created_at, updated_at")
         .eq("company_id", companyId)
         .order("worker_code");
       if (error) throw error;

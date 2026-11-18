@@ -1,5 +1,5 @@
 import { useT } from "@/lib/i18n";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -26,7 +26,9 @@ export const Route = createFileRoute("/_authenticated/app/workers/$workerId_/edi
   }),
   loader: async ({ context }) => {
     const active = pickActive(await context.queryClient.ensureQueryData(myMembershipsQuery()));
-    if (active) await context.queryClient.ensureQueryData(workersQuery(active.company_id));
+    if (!active) return;
+    if (active.role === "operator") throw redirect({ to: "/app" });
+    await context.queryClient.ensureQueryData(workersQuery(active.company_id));
   },
   component: EditWorkerPage,
 });
@@ -70,6 +72,7 @@ function EditForm({ worker }: { worker: Worker }) {
         category: blank(value.category),
         joining_date: value.joining_date,
         notes: blank(value.notes),
+        accommodation_id: value.accommodation_id ?? null,
       })
       .eq("id", worker.id);
     setBusy(false);
@@ -87,7 +90,7 @@ function EditForm({ worker }: { worker: Worker }) {
       </Link>
       <h1 className="mt-2 text-2xl font-bold">{t("Edit details")} {worker.worker_code}</h1>
       <div className="mt-5 rounded-xl border bg-card p-5 shadow-[var(--shadow-soft)]">
-        <WorkerPersonalFields value={form} onChange={setForm} errors={errors} />
+        <WorkerPersonalFields value={form} onChange={setForm} errors={errors} companyId={worker.company_id} />
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="outline" asChild>
             <Link to="/app/workers/$workerId" params={{ workerId: worker.id }}>{t("Cancel")}</Link>
