@@ -28,13 +28,39 @@ export const SUPPORT_WHATSAPP_LINK = (companyName?: string) => {
 };
 
 /**
+ * Calculates calendar days difference between target date and fromDate (defaulting to today).
+ * Both dates are compared at midnight boundary so days are accurate calendar days.
+ */
+export function getCalendarDaysRemaining(
+  targetDate: string | Date | number,
+  fromDate?: string | Date | number
+): number {
+  const target = new Date(targetDate);
+  const from = fromDate ? new Date(fromDate) : new Date();
+
+  const targetMidnight = new Date(
+    target.getFullYear(),
+    target.getMonth(),
+    target.getDate()
+  ).getTime();
+
+  const fromMidnight = new Date(
+    from.getFullYear(),
+    from.getMonth(),
+    from.getDate()
+  ).getTime();
+
+  return Math.round((targetMidnight - fromMidnight) / (24 * 60 * 60 * 1000));
+}
+
+/**
  * Calculates current subscription state based on trial and annual plan expiry dates.
  *
  * Rules:
- * - 14-day free trial from creation.
+ * - 14-day free trial strictly calculated from company creation date (created_at).
  * - Days 1-12 of trial: no banner shown (`showOwnerBanner: false`).
- * - Day 13 (expires tomorrow, <= 24 hrs): warning banner (`showOwnerBanner: true`, tone: warning).
- * - Day 14+ (trial ended): expired banner (`showOwnerBanner: true`, tone: danger).
+ * - Day 13 (expires tomorrow, 1 day left): warning banner (`showOwnerBanner: true`, tone: warning).
+ * - Day 14+ (trial ended, <= 0 days): expired banner (`showOwnerBanner: true`, tone: danger).
  * - Paid annual activation: expires after 1 year.
  * - <= 7 days before annual expiry: warning banner (`showOwnerBanner: true`, tone: warning).
  * - After annual expiry: expired banner (`showOwnerBanner: true`, tone: danger).
@@ -43,13 +69,34 @@ export function getSubscriptionStatus(company: {
   created_at?: string;
   trial_ends_at?: string | null;
   subscription_expires_at?: string | null;
+  subscription_notes?: string | null;
 }): SubscriptionStatus {
   const now = Date.now();
   const createdAtMs = company.created_at ? new Date(company.created_at).getTime() : now;
 
-  const trialEndsMs = company.trial_ends_at
-    ? new Date(company.trial_ends_at).getTime()
-    : createdAtMs + 14 * 24 * 60 * 60 * 1000;
+  // If trial was manually extended by super admin, respect trial_ends_at.
+  // Otherwise, 14-day trial is strictly 14 calendar days from creation date.
+  const isManuallyExtended = !!(
+    company.subscription_notes && company.subscription_notes.includes("Trial extended")
+  );
+
+  let trialEndsMs: number;
+  if (isManuallyExtended && company.trial_ends_at) {
+    trialEndsMs = new Date(company.trial_ends_at).getTime();
+  } else if (company.created_at) {
+    const createdDate = new Date(company.created_at);
+    const trialEndDate = new Date(
+      createdDate.getFullYear(),
+      createdDate.getMonth(),
+      createdDate.getDate() + 14,
+      createdDate.getHours(),
+      createdDate.getMinutes(),
+      createdDate.getSeconds()
+    );
+    trialEndsMs = trialEndDate.getTime();
+  } else {
+    trialEndsMs = createdAtMs + 14 * 24 * 60 * 60 * 1000;
+  }
 
   const subExpiresMs = company.subscription_expires_at
     ? new Date(company.subscription_expires_at).getTime()
@@ -57,8 +104,7 @@ export function getSubscriptionStatus(company: {
 
   // Case 1: Paid Annual Plan
   if (subExpiresMs !== null) {
-    const msRemaining = subExpiresMs - now;
-    const daysRemaining = Math.ceil(msRemaining / (24 * 60 * 60 * 1000));
+    const daysRemaining = getCalendarDaysRemaining(subExpiresMs, now);
 
     if (daysRemaining <= 0) {
       return {
@@ -105,8 +151,7 @@ export function getSubscriptionStatus(company: {
   }
 
   // Case 2: Free 14-Day Trial
-  const msTrialRemaining = trialEndsMs - now;
-  const daysTrialRemaining = Math.ceil(msTrialRemaining / (24 * 60 * 60 * 1000));
+  const daysTrialRemaining = getCalendarDaysRemaining(trialEndsMs, now);
 
   if (daysTrialRemaining <= 0) {
     return {
@@ -122,7 +167,7 @@ export function getSubscriptionStatus(company: {
     };
   }
 
-  // 1 day remaining: warn owner
+  // 1 day remaining: warn owner (Day 13)
   if (daysTrialRemaining <= 1) {
     return {
       kind: "trial_expiring_soon",

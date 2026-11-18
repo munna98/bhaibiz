@@ -76,6 +76,23 @@ export const listTenants = createServerFn({ method: "GET" })
       .from("workers")
       .select("company_id, status");
 
+    // Ensure database trial_ends_at is accurately set to created_at + 14 days
+    // for any company that has not been manually extended.
+    for (const c of companies ?? []) {
+      const isExtended = !!(c.subscription_notes && c.subscription_notes.includes("Trial extended"));
+      if (!isExtended && !c.subscription_expires_at && c.created_at) {
+        const correctTrialEnd = new Date(new Date(c.created_at).getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+        if (c.trial_ends_at !== correctTrialEnd) {
+          c.trial_ends_at = correctTrialEnd;
+          supabaseAdmin
+            .from("companies")
+            .update({ trial_ends_at: correctTrialEnd })
+            .eq("id", c.id)
+            .then(() => {});
+        }
+      }
+    }
+
     const memberCounts: Record<string, number> = {};
     for (const row of memberRows ?? []) {
       memberCounts[row.company_id] = (memberCounts[row.company_id] ?? 0) + 1;

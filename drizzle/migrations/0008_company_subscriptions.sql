@@ -10,7 +10,8 @@ ALTER TABLE public.companies
 -- 2. Backfill existing companies: trial ends 14 days after creation
 UPDATE public.companies 
 SET trial_ends_at = created_at + interval '14 days' 
-WHERE trial_ends_at IS NULL;
+WHERE subscription_expires_at IS NULL 
+  AND (subscription_notes IS NULL OR subscription_notes NOT LIKE '%Trial extended%');
 
 -- 3. Update create_company RPC to initialize trial_ends_at
 CREATE OR REPLACE FUNCTION public.create_company(_name text, _phone text, _address text)

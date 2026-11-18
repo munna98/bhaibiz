@@ -4,6 +4,25 @@ import { getSubscriptionStatus } from "@/lib/subscription";
 describe("Subscription Status Calculation", () => {
   const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
+  it("calculates accurate calendar days remaining for past creation dates", () => {
+    const now = new Date();
+    // 4 days ago -> 10 days remaining
+    const d4 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 4).toISOString();
+    expect(getSubscriptionStatus({ created_at: d4 }).daysRemaining).toBe(10);
+
+    // 2 days ago -> 12 days remaining
+    const d2 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2).toISOString();
+    expect(getSubscriptionStatus({ created_at: d2 }).daysRemaining).toBe(12);
+
+    // 1 day ago -> 13 days remaining
+    const d1 = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString();
+    expect(getSubscriptionStatus({ created_at: d1 }).daysRemaining).toBe(13);
+
+    // Today -> 14 days remaining
+    const d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    expect(getSubscriptionStatus({ created_at: d0 }).daysRemaining).toBe(14);
+  });
+
   it("does not show banner on days 1 to 12 of trial", () => {
     // Company created 3 days ago -> 11 days remaining
     const createdAt = new Date(Date.now() - 3 * ONE_DAY_MS).toISOString();
