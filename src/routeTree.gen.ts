@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
+import { Route as SuperadminRouteImport } from './routes/_superadmin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
@@ -23,6 +24,8 @@ import { Route as AuthenticatedAppMoreRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedAppReportsRouteImport } from './routes/_authenticated/app/reports'
 import { Route as AuthenticatedAppSettingsRouteImport } from './routes/_authenticated/app/settings'
 import { Route as AuthenticatedAppTeamRouteImport } from './routes/_authenticated/app/team'
+import { Route as SuperadminAdminIndexRouteImport } from './routes/_superadmin/admin/index'
+import { Route as SuperadminAdminCompanyIdRouteImport } from './routes/_superadmin/admin/$companyId'
 import { Route as AuthenticatedAppReceiptsPaymentIdRouteImport } from './routes/_authenticated/app/receipts/$paymentId'
 import { Route as AuthenticatedAppWorkersIndexRouteImport } from './routes/_authenticated/app/workers/index'
 import { Route as AuthenticatedAppWorkersWorkerIdRouteImport } from './routes/_authenticated/app/workers/$workerId'
@@ -36,6 +39,10 @@ const IndexRoute = IndexRouteImport.update({
 } as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperadminRoute = SuperadminRouteImport.update({
+  id: '/_superadmin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -100,6 +107,17 @@ const AuthenticatedAppTeamRoute = AuthenticatedAppTeamRouteImport.update({
   path: '/team',
   getParentRoute: () => AuthenticatedAppRoute,
 } as any)
+const SuperadminAdminIndexRoute = SuperadminAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => SuperadminRoute,
+} as any)
+const SuperadminAdminCompanyIdRoute =
+  SuperadminAdminCompanyIdRouteImport.update({
+    id: '/admin/$companyId',
+    path: '/admin/$companyId',
+    getParentRoute: () => SuperadminRoute,
+  } as any)
 const AuthenticatedAppReceiptsPaymentIdRoute =
   AuthenticatedAppReceiptsPaymentIdRouteImport.update({
     id: '/receipts/$paymentId',
@@ -144,7 +162,9 @@ export interface FileRoutesByFullPath {
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/team': typeof AuthenticatedAppTeamRoute
+  '/admin/$companyId': typeof SuperadminAdminCompanyIdRoute
   '/app/': typeof AuthenticatedAppIndexRoute
+  '/admin/': typeof SuperadminAdminIndexRoute
   '/app/receipts/$paymentId': typeof AuthenticatedAppReceiptsPaymentIdRoute
   '/app/workers/$workerId': typeof AuthenticatedAppWorkersWorkerIdRoute
   '/app/workers/new': typeof AuthenticatedAppWorkersNewRoute
@@ -163,7 +183,9 @@ export interface FileRoutesByTo {
   '/app/reports': typeof AuthenticatedAppReportsRoute
   '/app/settings': typeof AuthenticatedAppSettingsRoute
   '/app/team': typeof AuthenticatedAppTeamRoute
+  '/admin/$companyId': typeof SuperadminAdminCompanyIdRoute
   '/app': typeof AuthenticatedAppIndexRoute
+  '/admin': typeof SuperadminAdminIndexRoute
   '/app/receipts/$paymentId': typeof AuthenticatedAppReceiptsPaymentIdRoute
   '/app/workers/$workerId': typeof AuthenticatedAppWorkersWorkerIdRoute
   '/app/workers/new': typeof AuthenticatedAppWorkersNewRoute
@@ -174,6 +196,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
+  '/_superadmin': typeof SuperadminRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/app': typeof AuthenticatedAppRouteWithChildren
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
@@ -185,7 +208,9 @@ export interface FileRoutesById {
   '/_authenticated/app/reports': typeof AuthenticatedAppReportsRoute
   '/_authenticated/app/settings': typeof AuthenticatedAppSettingsRoute
   '/_authenticated/app/team': typeof AuthenticatedAppTeamRoute
+  '/_superadmin/admin/$companyId': typeof SuperadminAdminCompanyIdRoute
   '/_authenticated/app/': typeof AuthenticatedAppIndexRoute
+  '/_superadmin/admin/': typeof SuperadminAdminIndexRoute
   '/_authenticated/app/receipts/$paymentId': typeof AuthenticatedAppReceiptsPaymentIdRoute
   '/_authenticated/app/workers/$workerId': typeof AuthenticatedAppWorkersWorkerIdRoute
   '/_authenticated/app/workers/new': typeof AuthenticatedAppWorkersNewRoute
@@ -207,7 +232,9 @@ export interface FileRouteTypes {
     | '/app/reports'
     | '/app/settings'
     | '/app/team'
+    | '/admin/$companyId'
     | '/app/'
+    | '/admin/'
     | '/app/receipts/$paymentId'
     | '/app/workers/$workerId'
     | '/app/workers/new'
@@ -226,7 +253,9 @@ export interface FileRouteTypes {
     | '/app/reports'
     | '/app/settings'
     | '/app/team'
+    | '/admin/$companyId'
     | '/app'
+    | '/admin'
     | '/app/receipts/$paymentId'
     | '/app/workers/$workerId'
     | '/app/workers/new'
@@ -236,6 +265,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/_superadmin'
     | '/auth'
     | '/_authenticated/app'
     | '/_authenticated/onboarding'
@@ -247,7 +277,9 @@ export interface FileRouteTypes {
     | '/_authenticated/app/reports'
     | '/_authenticated/app/settings'
     | '/_authenticated/app/team'
+    | '/_superadmin/admin/$companyId'
     | '/_authenticated/app/'
+    | '/_superadmin/admin/'
     | '/_authenticated/app/receipts/$paymentId'
     | '/_authenticated/app/workers/$workerId'
     | '/_authenticated/app/workers/new'
@@ -258,6 +290,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  SuperadminRoute: typeof SuperadminRouteWithChildren
   AuthRoute: typeof AuthRoute
   AuthConfirmRoute: typeof AuthConfirmRoute
 }
@@ -276,6 +309,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_superadmin': {
+      id: '/_superadmin'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof SuperadminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -361,6 +401,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/app/team'
       preLoaderRoute: typeof AuthenticatedAppTeamRouteImport
       parentRoute: typeof AuthenticatedAppRoute
+    }
+    '/_superadmin/admin/': {
+      id: '/_superadmin/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof SuperadminAdminIndexRouteImport
+      parentRoute: typeof SuperadminRoute
+    }
+    '/_superadmin/admin/$companyId': {
+      id: '/_superadmin/admin/$companyId'
+      path: '/admin/$companyId'
+      fullPath: '/admin/$companyId'
+      preLoaderRoute: typeof SuperadminAdminCompanyIdRouteImport
+      parentRoute: typeof SuperadminRoute
     }
     '/_authenticated/app/receipts/$paymentId': {
       id: '/_authenticated/app/receipts/$paymentId'
@@ -451,9 +505,24 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
   AuthenticatedRouteChildren,
 )
 
+interface SuperadminRouteChildren {
+  SuperadminAdminCompanyIdRoute: typeof SuperadminAdminCompanyIdRoute
+  SuperadminAdminIndexRoute: typeof SuperadminAdminIndexRoute
+}
+
+const SuperadminRouteChildren: SuperadminRouteChildren = {
+  SuperadminAdminCompanyIdRoute: SuperadminAdminCompanyIdRoute,
+  SuperadminAdminIndexRoute: SuperadminAdminIndexRoute,
+}
+
+const SuperadminRouteWithChildren = SuperadminRoute._addFileChildren(
+  SuperadminRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  SuperadminRoute: SuperadminRouteWithChildren,
   AuthRoute: AuthRoute,
   AuthConfirmRoute: AuthConfirmRoute,
 }

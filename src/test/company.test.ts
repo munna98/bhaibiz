@@ -86,6 +86,6 @@ describe("Company and Membership utilities", () => {
       "company_id, company_name, role, company:companies(id, name, phone, address, receipt_prefix)"
     );
     expect(result).toHaveLength(1);
-    expect(result[0].company_name).toBe("Alpha Corp");
+    expect(result[0]?.company_name).toBe("Alpha Corp");
   });
 });

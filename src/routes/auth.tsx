@@ -26,6 +26,12 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+const SUPER_ADMIN_EMAIL = import.meta.env["VITE_SUPER_ADMIN_EMAIL"] as string | undefined;
+
+function resolvePostLoginRoute(email: string | undefined): "/admin" | "/app" {
+  return SUPER_ADMIN_EMAIL && email === SUPER_ADMIN_EMAIL ? "/admin" : "/app";
+}
+
 function AuthPage() {
   const t = useT();
   const navigate = useNavigate();
@@ -39,10 +45,10 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/app" });
+      if (data.session) navigate({ to: resolvePostLoginRoute(data.session.user.email) });
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (session) navigate({ to: "/app" });
+      if (session) navigate({ to: resolvePostLoginRoute(session.user.email) });
     });
     return () => sub.subscription.unsubscribe();
   }, [navigate]);
@@ -76,7 +82,7 @@ function AuthPage() {
         }
         throw error;
       }
-      navigate({ to: "/app" });
+      navigate({ to: resolvePostLoginRoute(emailToUse) });
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -159,3 +165,5 @@ function AuthPage() {
     </div>
   );
 }
+
+

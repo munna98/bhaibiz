@@ -24,10 +24,19 @@ import {
   TrendingUp,
   ReceiptText,
   HandCoins,
+  ShieldAlert,
+  ArrowLeft,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { myMembershipsQuery, pickActive, ROLE_LABELS, setActiveCompanyId } from "@/lib/company";
+import {
+  myMembershipsQuery,
+  pickActive,
+  ROLE_LABELS,
+  setActiveCompanyId,
+  type MyMembership,
+} from "@/lib/company";
 import { LanguageSelect } from "@/components/LanguageSelect";
 import { useT } from "@/lib/i18n";
 import {
@@ -39,9 +48,14 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { REPORT_CONFIG_ITEMS, type ReportKind } from "@/lib/report-data";
+import { getImpersonatedCompany } from "@/lib/superadmin.functions";
+
+const SUPER_ADMIN_EMAIL = import.meta.env["VITE_SUPER_ADMIN_EMAIL"] as string | undefined;
 
 export const Route = createFileRoute("/_authenticated/app")({
   loader: async ({ context }) => {
+    // Super admin impersonating: skip membership check — they have no memberships
+    if (SUPER_ADMIN_EMAIL && (context as { email?: string }).email === SUPER_ADMIN_EMAIL) return;
     const list = await context.queryClient.ensureQueryData(myMembershipsQuery());
     if (list.length === 0) throw redirect({ to: "/onboarding" });
   },
@@ -70,8 +84,112 @@ export const REPORT_NAV_ITEMS = REPORT_CONFIG_ITEMS.map((item) => ({
   explanation: item.explanation,
 }));
 
+// ---------------------------------------------------------------------------
+// AppShell — forks between super admin impersonation and normal tenant shell
+// ---------------------------------------------------------------------------
 function AppShell() {
+  const { email } = Route.useRouteContext() as { email?: string };
+  const isSuperAdmin = !!(SUPER_ADMIN_EMAIL && email === SUPER_ADMIN_EMAIL);
+  return isSuperAdmin ? <SuperAdminImpersonationShell /> : <TenantAppShell />;
+}
+
+// ---------------------------------------------------------------------------
+// SuperAdminImpersonationShell — fetches impersonated company via server fn
+// and renders the full shell with an amber "exit" banner at the top
+// ---------------------------------------------------------------------------
+function SuperAdminImpersonationShell() {
+  const navigate = useNavigate();
+  const fetchCompany = useServerFn(getImpersonatedCompany);
+  const [membership, setMembership] = useState<MyMembership | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const companyId =
+    typeof window !== "undefined" ? window.localStorage.getItem("bhaibiz.activeCompany") : null;
+
+  useEffect(() => {
+    if (!companyId) {
+      navigate({ to: "/admin" });
+      return;
+    }
+    fetchCompany({ data: { companyId } })
+      .then(setMembership)
+      .catch(() => navigate({ to: "/admin" }))
+      .finally(() => setLoading(false));
+  }, [companyId, fetchCompany, navigate]);
+
+  function exitImpersonation() {
+    navigate({ to: "/admin" });
+  }
+
+  if (loading || !membership) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground text-sm">
+        Loading…
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Impersonation banner */}
+      <div className="bg-amber-500 text-white px-4 py-2 flex items-center justify-between gap-3 text-sm font-medium shrink-0 print:hidden">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="h-4 w-4 shrink-0" />
+          <span>
+            Super admin view — <strong>{membership.company.name}</strong>{" "}
+            <span className="font-normal opacity-80">(read-only)</span>
+          </span>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 border-white/50 bg-transparent text-white hover:bg-white/20 hover:text-white"
+          onClick={exitImpersonation}
+        >
+          <ArrowLeft className="h-3.5 w-3.5 mr-1" /> Exit
+        </Button>
+      </div>
+      {/* Render the full app shell with the impersonated company */}
+      <div className="flex flex-1 md:flex">
+        <ShellContent active={membership} all={[membership]} onSignOut={exitImpersonation} />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TenantAppShell — normal authenticated tenant path
+// ---------------------------------------------------------------------------
+function TenantAppShell() {
   const { active, all } = useActiveMembership();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    qc.clear();
+    navigate({ to: "/auth" });
+  }
+
+  return (
+    <div className="min-h-screen bg-background md:flex">
+      <ShellContent active={active} all={all} onSignOut={signOut} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ShellContent — shared sidebar / header / nav, accepts membership as props
+// ---------------------------------------------------------------------------
+function ShellContent({
+  active,
+  all,
+  onSignOut,
+}: {
+  active: MyMembership;
+  all: MyMembership[];
+  onSignOut: () => void;
+}) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const location = useLocation();
@@ -86,9 +204,7 @@ function AppShell() {
   const [reportsOpen, setReportsOpen] = useState(isReportsPath);
 
   useEffect(() => {
-    if (isReportsPath) {
-      setReportsOpen(true);
-    }
+    if (isReportsPath) setReportsOpen(true);
   }, [isReportsPath]);
 
   const switchCompany = async (id: string) => {
@@ -96,6 +212,7 @@ function AppShell() {
     await qc.invalidateQueries({ queryKey: ["my-memberships"] });
     await navigate({ to: "/app", search: {} });
   };
+
   const companyPicker =
     all.length > 1 ? (
       <Select value={active.company_id} onValueChange={switchCompany}>
@@ -114,7 +231,9 @@ function AppShell() {
         </SelectContent>
       </Select>
     ) : (
-      <div className="mt-3 truncate text-sm font-medium">{active.company_name || active.company.name}</div>
+      <div className="mt-3 truncate text-sm font-medium">
+        {active.company_name || active.company.name}
+      </div>
     );
 
   const nav = [
@@ -123,8 +242,6 @@ function AppShell() {
     { to: "/app/collect", label: "Collect", icon: Wallet, show: active.role !== "operator" },
     { to: "/app/workers", label: "Workers", icon: HardHat, show: true },
     { to: "/app/reports", label: "Reports", icon: BarChart3, show: active.role !== "operator" },
-    // Temporarily hidden from the sidebar; retain the audit page for later introduction.
-    // { to: "/app/audit", label: "Audit history", icon: History, show: isOwner },
     { to: "/app/team", label: "Team", icon: Users, show: isOwner },
     { to: "/app/settings", label: "Company", icon: Settings, show: isOwner },
   ] as const;
@@ -134,14 +251,8 @@ function AppShell() {
     { to: "/app/more", label: "More", icon: MoreHorizontal, show: true },
   ] as const;
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    qc.clear();
-    navigate({ to: "/auth" });
-  }
-
   return (
-    <div className="min-h-screen bg-background md:flex">
+    <>
       <aside className="app-navigation hidden w-60 flex-col bg-sidebar p-4 text-sidebar-foreground md:flex">
         <div className="text-xl font-bold text-sidebar-primary font-[family-name:var(--font-display)]">
           BhaiBiz
@@ -233,7 +344,7 @@ function AppShell() {
         <Button
           variant="ghost"
           className="justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          onClick={signOut}
+          onClick={onSignOut}
         >
           <LogOut className="mr-2 h-4 w-4" /> {t("Sign out")}
         </Button>
@@ -249,7 +360,7 @@ function AppShell() {
           size="icon"
           variant="ghost"
           aria-label={t("Sign out")}
-          onClick={signOut}
+          onClick={onSignOut}
           className="hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <LogOut className="h-4 w-4" />
@@ -275,6 +386,7 @@ function AppShell() {
             </Link>
           ))}
       </nav>
-    </div>
+    </>
   );
 }
+
