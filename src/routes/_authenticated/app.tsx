@@ -27,7 +27,7 @@ import {
   ShieldAlert,
   ArrowLeft,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, createContext, useContext } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -49,20 +49,31 @@ import {
 import { Button } from "@/components/ui/button";
 import { REPORT_CONFIG_ITEMS, type ReportKind } from "@/lib/report-data";
 import { getImpersonatedCompany } from "@/lib/superadmin.functions";
-
-const SUPER_ADMIN_EMAIL = import.meta.env["VITE_SUPER_ADMIN_EMAIL"] as string | undefined;
+import { isSuperAdminEmail } from "@/lib/superadmin";
 
 export const Route = createFileRoute("/_authenticated/app")({
   loader: async ({ context }) => {
-    // Super admin impersonating: skip membership check — they have no memberships
-    if (SUPER_ADMIN_EMAIL && (context as { email?: string }).email === SUPER_ADMIN_EMAIL) return;
+    const email = (context as { email?: string }).email;
+    if (isSuperAdminEmail(email)) {
+      const activeCompany =
+        typeof window !== "undefined" ? window.localStorage.getItem("bhaibiz.activeCompany") : null;
+      if (activeCompany) return;
+      throw redirect({ to: "/admin" });
+    }
     const list = await context.queryClient.ensureQueryData(myMembershipsQuery());
     if (list.length === 0) throw redirect({ to: "/onboarding" });
   },
   component: AppShell,
 });
 
+const ActiveMembershipContext = createContext<{
+  active: MyMembership;
+  all: MyMembership[];
+} | null>(null);
+
 export function useActiveMembership() {
+  const ctx = useContext(ActiveMembershipContext);
+  if (ctx) return ctx;
   const { data } = useSuspenseQuery(myMembershipsQuery());
   const active = (pickActive(data) ?? data[0])!;
   return { active, all: data };
@@ -89,7 +100,7 @@ export const REPORT_NAV_ITEMS = REPORT_CONFIG_ITEMS.map((item) => ({
 // ---------------------------------------------------------------------------
 function AppShell() {
   const { email } = Route.useRouteContext() as { email?: string };
-  const isSuperAdmin = !!(SUPER_ADMIN_EMAIL && email === SUPER_ADMIN_EMAIL);
+  const isSuperAdmin = isSuperAdminEmail(email);
   return isSuperAdmin ? <SuperAdminImpersonationShell /> : <TenantAppShell />;
 }
 
@@ -252,7 +263,7 @@ function ShellContent({
   ] as const;
 
   return (
-    <>
+    <ActiveMembershipContext.Provider value={{ active, all }}>
       <aside className="app-navigation hidden w-60 flex-col bg-sidebar p-4 text-sidebar-foreground md:flex">
         <div className="text-xl font-bold text-sidebar-primary font-[family-name:var(--font-display)]">
           BhaiBiz
@@ -386,7 +397,7 @@ function ShellContent({
             </Link>
           ))}
       </nav>
-    </>
+    </ActiveMembershipContext.Provider>
   );
 }
 

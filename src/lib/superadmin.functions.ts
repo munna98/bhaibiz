@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isSuperAdminEmail } from "@/lib/superadmin";
 
 function assertSuperAdmin(email: string | undefined) {
-  const adminEmail = process.env["SUPER_ADMIN_EMAIL"];
-  if (!adminEmail || email !== adminEmail) {
+  if (!isSuperAdminEmail(email)) {
     throw new Error("Forbidden: super admin only");
   }
 }

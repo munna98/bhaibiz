@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff } from "lucide-react";
+import { isSuperAdminEmail } from "@/lib/superadmin";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -26,10 +27,8 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-const SUPER_ADMIN_EMAIL = import.meta.env["VITE_SUPER_ADMIN_EMAIL"] as string | undefined;
-
 function resolvePostLoginRoute(email: string | undefined): "/admin" | "/app" {
-  return SUPER_ADMIN_EMAIL && email === SUPER_ADMIN_EMAIL ? "/admin" : "/app";
+  return isSuperAdminEmail(email) ? "/admin" : "/app";
 }
 
 function AuthPage() {
