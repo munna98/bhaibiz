@@ -112,7 +112,7 @@ export function buildReport(data: ReportData, kind: ReportKind, from: string, to
     for (const c of data.commission) if (byId.has(c.worker_id) && during(c.work_date)) {
       const key = `${c.worker_id}:${c.work_date}`; sums.set(key, (sums.get(key) ?? 0) + c.amount_paise);
     }
-    for (const [key, amount] of sums) { const [id = "", date = ""] = key.split(":"); rows.push({ id: key, workerId: id, cells: [...prefix(id), date, amount / 100], amount }); }
+    for (const [key, amount] of sums) { if (amount <= 0) continue; const [id = "", date = ""] = key.split(":"); rows.push({ id: key, workerId: id, cells: [...prefix(id), date, amount / 100], amount }); }
   } else if (kind === "collections") {
     headers = ["Worker ID", "Worker", "Date", "Receipt", "Method", "Collected (₹)"]; moneyColumns = [5];
     for (const p of data.payments) if (byId.has(p.worker_id) && during(p.paid_on) && !p.voided_at) rows.push({ id: p.id, workerId: p.worker_id, receiptId: p.id, cells: [...prefix(p.worker_id), p.paid_on, p.receipt_no, p.method, p.amount_paise / 100], amount: p.amount_paise });

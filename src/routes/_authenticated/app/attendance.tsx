@@ -158,6 +158,7 @@ function AttendancePage() {
   });
 
   function tap(workerId: string, name: string, status: AttendanceStatus) {
+    if (mark.isPending && mark.variables?.workerId === workerId) return;
     const cur = markOf(workerId);
     if (cur === status) return;
     if (needsReason(cur, status, date, today)) { setReason(""); setAsk({ workerId, name, status }); return; }
@@ -166,6 +167,7 @@ function AttendancePage() {
 
   function toggleTile(workerId: string, name: string) {
     if (!editable) return;
+    if (mark.isPending && mark.variables?.workerId === workerId) return;
     const cur = markOf(workerId);
     const next = nextTileStatus(cur);
     if (needsReason(cur, next, date, today)) {

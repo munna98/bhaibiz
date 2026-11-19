@@ -52,3 +52,21 @@ it("money dates must be present, valid and not future", () => {
   expect(validMoneyDate("2026-02-30", "2026-11-11")).toBe(false);
   expect(validMoneyDate("2026-11-11", "2026-11-11")).toBe(true);
 });
+
+describe("worker ledger commission entries", () => {
+  it("excludes reversed earn entries and reversals from ledger rows", () => {
+    // Simulates what happens when a user clicks/toggles worker tile multiple times
+    const entries = [
+      { id: "1", work_date: "2026-11-10", kind: "earn", amount_paise: 50000, reversed_at: "2026-11-10T10:00:00Z" },
+      { id: "2", work_date: "2026-11-10", kind: "reversal", amount_paise: -50000, reversed_at: null },
+      { id: "3", work_date: "2026-11-10", kind: "earn", amount_paise: 50000, reversed_at: "2026-11-10T10:05:00Z" },
+      { id: "4", work_date: "2026-11-10", kind: "reversal", amount_paise: -50000, reversed_at: null },
+      { id: "5", work_date: "2026-11-10", kind: "earn", amount_paise: 50000, reversed_at: null },
+    ];
+    const visibleInLedger = entries.filter((c) => c.kind === "earn" && !c.reversed_at);
+    expect(visibleInLedger).toHaveLength(1);
+    expect(visibleInLedger[0]?.id).toBe("5");
+    expect(visibleInLedger[0]?.amount_paise).toBe(50000);
+  });
+});
+

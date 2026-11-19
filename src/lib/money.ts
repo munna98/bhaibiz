@@ -90,7 +90,12 @@ export const ledgerQuery = (workerId: string) =>
     queryKey: ["ledger", workerId],
     queryFn: async () => {
       const [c, p, adj, adv, rep] = await Promise.all([
-        supabase.from("commission_entries").select("id, work_date, kind, amount_paise, created_at").eq("worker_id", workerId),
+        supabase
+          .from("commission_entries")
+          .select("id, work_date, kind, amount_paise, created_at, reversed_at")
+          .eq("worker_id", workerId)
+          .eq("kind", "earn")
+          .is("reversed_at", null),
         supabase.from("payments").select("id, paid_on, amount_paise, method, reference, receipt_no, voided_at, void_reason, created_at").eq("worker_id", workerId),
         supabase.from("adjustments").select("id, on_date, kind, amount_paise, reason, created_at").eq("worker_id", workerId),
         supabase.from("advances").select("id, given_on, amount_paise, reason, created_at").eq("worker_id", workerId),

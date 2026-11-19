@@ -30,7 +30,9 @@ export function WorkerLedger({ workerId, companyId, role }: { workerId: string; 
   });
   const d = led.data;
   const rows: Row[] = d ? [
-    ...d.commission.map((c) => ({ key: c.id, date: c.work_date, at: c.created_at, label: c.kind === "earn" ? "Worked — commission" : "Attendance corrected", amount: c.amount_paise })),
+    ...d.commission
+      .filter((c) => c.kind === "earn" && !("reversed_at" in c && c.reversed_at))
+      .map((c) => ({ key: c.id, date: c.work_date, at: c.created_at, label: "Worked — commission", amount: c.amount_paise })),
     ...d.payments.map((p) => ({ key: p.id, date: p.paid_on, at: p.created_at, label: `${t("Paid")} ${t(methodLabel(p.method))} · ${p.receipt_no}`, ...(p.voided_at ? { detail: `Void: ${p.void_reason}` } : {}), amount: -p.amount_paise, struck: !!p.voided_at, link: p.id })),
     ...d.adjustments.map((a) => ({ key: a.id, date: a.on_date, at: a.created_at, label: a.kind === "waiver" ? "Waiver" : a.kind === "credit" ? "Credit adjustment" : "Debit adjustment", detail: a.reason, amount: a.kind === "debit" ? a.amount_paise : -a.amount_paise })),
   ].sort((a, b) => b.date.localeCompare(a.date) || b.at.localeCompare(a.at)) : [];
