@@ -105,14 +105,11 @@ describe("Landing Page (Index Route)", () => {
     expect(screen.getByText(/Excel Spreadsheets/i)).toBeInTheDocument();
   });
 
-  it("renders the structured AI search summary block and FAQ accordion", () => {
+  it("renders the FAQ accordion and high-conversion CTA", () => {
     const Component = IndexRoute.options.component!;
-    const { container } = render(<Component />);
-
-    const aiSection = container.querySelector("#about-bhaibiz");
-    expect(aiSection).not.toBeNull();
-    expect(aiSection).toHaveTextContent(/About BhaiBiz/i);
+    render(<Component />);
 
     expect(screen.getByText(/Frequently Asked Questions/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ready to run your labour supply business with confidence\?/i)).toBeInTheDocument();
   });
 });

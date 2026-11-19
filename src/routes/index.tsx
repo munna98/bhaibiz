@@ -329,152 +329,52 @@ function Index() {
         {/* Hero Section */}
         <section className="relative overflow-hidden pt-12 pb-16 md:pt-20 md:pb-24">
           <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,rgba(13,95,71,0.12),transparent)]" />
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid items-center gap-12 lg:grid-cols-12">
-              <div className="lg:col-span-7">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-secondary/80 px-3.5 py-1 text-xs font-semibold text-secondary-foreground shadow-xs">
-                  <Sparkles className="h-3.5 w-3.5 text-accent-foreground" />
-                  <span>{t("Trusted by Labour Contractors Across Kerala & India")}</span>
-                </div>
+          <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-secondary/80 px-3.5 py-1 text-xs font-semibold text-secondary-foreground shadow-xs">
+              <Sparkles className="h-3.5 w-3.5 text-accent-foreground" />
+              <span>{t("Trusted by Labour Contractors Across Kerala & India")}</span>
+            </div>
 
-                <h1 className="mt-5 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
-                  {t("Who worked today, what's due, who still owes.")}{" "}
-                  <span className="block text-primary">
-                    {t("Tracked in two taps.")}
-                  </span>
-                </h1>
+            <h1 className="mt-5 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
+              {t("Who worked today, what's due, who still owes.")}{" "}
+              <span className="block text-primary">
+                {t("Tracked in two taps.")}
+              </span>
+            </h1>
 
-                <p className="mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-                  {t(
-                    "The complete commission ledger and workforce management app for labour suppliers. Mark daily attendance in seconds, auto-calculate commission dues, generate instant WhatsApp receipts, secure Aadhaar cards with bank-grade encryption, and manage worker camps without losing a single rupee."
-                  )}
-                </p>
+            <p className="mt-6 max-w-2xl mx-auto text-lg leading-relaxed text-muted-foreground sm:text-xl">
+              {t(
+                "The complete commission ledger and workforce management app for labour suppliers. Mark daily attendance in seconds, auto-calculate commission dues, generate instant WhatsApp receipts, secure Aadhaar cards with bank-grade encryption, and manage worker camps without losing a single rupee."
+              )}
+            </p>
 
-                {/* Primary CTAs */}
-                <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
-                  <Button asChild size="lg" className="h-12 px-6 text-base font-semibold shadow-md">
-                    <Link to="/auth">
-                      {t("Start free in 60 seconds")}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="lg" className="h-12 px-6 text-base">
-                    <a href="#how-it-works">{t("See how it works")}</a>
-                  </Button>
-                </div>
+            {/* Primary CTAs */}
+            <div className="mt-8 flex flex-wrap justify-center items-center gap-3 sm:gap-4">
+              <Button asChild size="lg" className="h-12 px-6 text-base font-semibold shadow-md">
+                <Link to="/auth">
+                  {t("Start free in 60 seconds")}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="h-12 px-6 text-base">
+                <a href="#how-it-works">{t("See how it works")}</a>
+              </Button>
+            </div>
 
-                {/* Trust Badges */}
-                <div className="mt-8 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    {t("AES-256 Encrypted Aadhaar Vault")}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    {t("Instant WhatsApp & Thermal Receipts")}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4 text-primary" />
-                    {t("5 Exportable Financial & Attendance Reports")}
-                  </span>
-                </div>
-              </div>
-
-              {/* Live Interactive Dashboard Snapshot */}
-              <div className="lg:col-span-5">
-                <div className="relative rounded-2xl border border-border bg-card p-5 shadow-xl md:p-6">
-                  {/* Mockup Top Header */}
-                  <div className="flex items-center justify-between border-b border-border pb-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <h2 className="text-sm font-semibold text-foreground">Kochi Metro Squad A</h2>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">42 Workers • Today's Register</p>
-                    </div>
-                    <Badge variant="secondary" className="text-xs font-semibold">
-                      Live Shift
-                    </Badge>
-                  </div>
-
-                  {/* Summary Bar */}
-                  <div className="mt-4 grid grid-cols-3 gap-2 rounded-lg bg-muted/60 p-2.5 text-center text-xs">
-                    <div>
-                      <p className="text-muted-foreground font-medium">{t("Worked")}</p>
-                      <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">39</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground font-medium">{t("Earned")}</p>
-                      <p className="text-sm font-bold text-foreground">₹5,850</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground font-medium">{t("Pending")}</p>
-                      <p className="text-sm font-bold text-amber-600 dark:text-amber-400">1</p>
-                    </div>
-                  </div>
-
-                  {/* Sample Worker Ledger Card */}
-                  <div className="mt-4 rounded-xl border border-border/80 bg-background p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">
-                          MR
-                        </div>
-                        <div>
-                          <p className="font-semibold text-sm leading-tight text-foreground">Mohammed Rafiq</p>
-                          <p className="text-[11px] text-muted-foreground">ID: #WK-104 • Camp 2, Room 4</p>
-                        </div>
-                      </div>
-                      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-none hover:bg-emerald-500/20">
-                        {t("Worked")} ✓
-                      </Badge>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-border/60">
-                      <div>
-                        <span className="text-muted-foreground">{t("Daily rate")}: </span>
-                        <span className="font-semibold text-foreground">₹850</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">{t("Commission (₹)")}: </span>
-                        <span className="font-semibold text-primary">₹150</span>
-                      </div>
-                    </div>
-
-                    <div className="rounded-lg bg-secondary/50 p-2 text-xs flex justify-between items-center">
-                      <span className="text-muted-foreground font-medium">{t("Due now")}:</span>
-                      <span className="font-bold text-sm text-foreground">₹450</span>
-                    </div>
-
-                    {/* Instant Receipt Notification */}
-                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-2.5 text-xs">
-                      <div className="flex items-center justify-between text-primary font-medium">
-                        <span className="flex items-center gap-1.5">
-                          <Receipt className="h-3.5 w-3.5" />
-                          Receipt #BB-2026-0842
-                        </span>
-                        <span>₹300 UPI</span>
-                      </div>
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        Oldest 2 shifts cleared • Auto FIFO ledger
-                      </p>
-                      <div className="mt-2 flex gap-2">
-                        <span className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-medium text-white shadow-2xs">
-                          <Share2 className="h-3 w-3" />
-                          WhatsApp Sent
-                        </span>
-                        <span className="text-[10px] text-muted-foreground flex items-center">
-                          Aadhaar: •••• •••• 5821
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="mt-3 text-center text-[11px] text-muted-foreground">
-                    {t("Fast, field-tested, and built for low-connectivity Indian worksites.")}
-                  </p>
-                </div>
-              </div>
+            {/* Trust Badges */}
+            <div className="mt-8 flex flex-wrap justify-center items-center gap-y-2 gap-x-6 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                {t("AES-256 Encrypted Aadhaar Vault")}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                {t("Instant WhatsApp & Thermal Receipts")}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-primary" />
+                {t("5 Exportable Financial & Attendance Reports")}
+              </span>
             </div>
           </div>
         </section>
@@ -891,41 +791,6 @@ function Index() {
                   </tr>
                 </tbody>
               </table>
-            </div>
-          </div>
-        </section>
-
-        {/* AI & Search Agents Knowledge Section (Explicit Semantic Block) */}
-        <section
-          id="about-bhaibiz"
-          className="border-t border-border bg-card/40 py-16 text-muted-foreground"
-        >
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="max-w-3xl">
-              <h2 className="text-xl font-bold text-foreground">
-                {t("About BhaiBiz (AI & Search Summary)")}
-              </h2>
-              <p className="mt-3 text-sm leading-relaxed">
-                <strong>BhaiBiz</strong> is the authoritative web application and commission ledger designed for labour contractors, manpower recruitment agencies, construction subcontractors, and guest worker camp operators in Kerala and India.
-              </p>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 text-xs leading-relaxed">
-                <div className="rounded-lg border border-border bg-background p-3.5">
-                  <strong className="block text-foreground font-semibold mb-1">Core Workflows</strong>
-                  Two-tap daily attendance marking, automatic commission calculations based on date-locked agreements, FIFO payment receipt settlements, and WhatsApp receipt distribution.
-                </div>
-                <div className="rounded-lg border border-border bg-background p-3.5">
-                  <strong className="block text-foreground font-semibold mb-1">Identity & Security</strong>
-                  AES-256-GCM authenticated Aadhaar encryption with HMAC-SHA256 duplicate checks. Full numbers restricted exclusively to owners; staff view masked last 4 digits only.
-                </div>
-                <div className="rounded-lg border border-border bg-background p-3.5">
-                  <strong className="block text-foreground font-semibold mb-1">Worker Camps</strong>
-                  Comprehensive accommodation and camp capacity management with room allotments and assigned site operators.
-                </div>
-                <div className="rounded-lg border border-border bg-background p-3.5">
-                  <strong className="block text-foreground font-semibold mb-1">Reports & Data</strong>
-                  Five real-time Excel export sheets: Net Outstanding Due, Daily Attendance Register, Commission Earned, Payment Receipts Log, and Advance Loans & Repayments.
-                </div>
-              </div>
             </div>
           </div>
         </section>
