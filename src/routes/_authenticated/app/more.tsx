@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BarChart3, Building2, ChevronDown, ChevronRight, History, Settings, Users } from "lucide-react";
+import { BarChart3, Building2, ChevronDown, ChevronRight, HardHat, Settings, Users } from "lucide-react";
 import { useState } from "react";
 import { useActiveMembership, REPORT_NAV_ITEMS } from "../app";
 import { canViewReports } from "@/lib/report-data";
@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_authenticated/app/more")({
   head: () => ({
     meta: [
       { title: "More — BhaiBiz" },
-      { name: "description", content: "Company reports, language, team and audit history." },
+      { name: "description", content: "Company reports, language, and team." },
       { property: "og:title", content: "More — BhaiBiz" },
       { property: "og:description", content: "Company tools and language preferences." },
       { property: "og:type", content: "website" },
@@ -75,6 +75,13 @@ function MorePage() {
           </div>
         )}
 
+        {active.role !== "operator" && (
+          <Link to="/app/workers" className="flex items-center gap-3 py-4 text-primary">
+            <HardHat className="h-5 w-5" />
+            {t("Workers")}
+          </Link>
+        )}
+
         {(isOwner || active.role === "manager") && (
           <Link to="/app/accommodations" className="flex items-center gap-3 py-4 text-primary">
             <Building2 className="h-5 w-5" />
@@ -93,13 +100,6 @@ function MorePage() {
           <Link to="/app/settings" className="flex items-center gap-3 py-4 text-primary">
             <Settings className="h-5 w-5" />
             {t("Company")}
-          </Link>
-        )}
-
-        {isOwner && (
-          <Link to="/app/audit" className="flex items-center gap-3 py-4 text-primary">
-            <History className="h-5 w-5" />
-            {t("Audit history")}
           </Link>
         )}
       </nav>
