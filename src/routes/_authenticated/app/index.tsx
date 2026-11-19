@@ -75,6 +75,13 @@ function Dashboard() {
   const scopedCollected = report.payments
     .filter((p) => p.paid_on === selectedDate && !p.voided_at && workerIds.has(p.worker_id))
     .reduce((sum, p) => sum + p.amount_paise, 0);
+  const scopedEarned = report.commission
+    .filter((c) => c.work_date === selectedDate && workerIds.has(c.worker_id))
+    .reduce((sum, c) => sum + c.amount_paise, 0);
+
+  const earnedAmount = isOperator ? scopedEarned : (att.data?.earned ?? 0);
+  const collectedAmount = isOperator ? scopedCollected : (coll.data ?? 0);
+  const outstandingAmount = Math.max(0, earnedAmount - collectedAmount);
 
   const baseCards: { label: string; value: string | number | undefined; show?: boolean }[] = [
     { label: "Active workers", value: activeCount },
@@ -84,11 +91,15 @@ function Dashboard() {
     { label: view === "today" ? "Pending today" : "Pending yesterday", value: pendingCount },
     {
       label: view === "today" ? "Commission earned today" : "Commission earned yesterday",
-      value: att.data ? formatINR(att.data.earned) : undefined,
+      value: att.data ? formatINR(earnedAmount) : undefined,
     },
     {
       label: view === "today" ? "Collected today" : "Collected yesterday",
-      value: formatINR(isOperator ? scopedCollected : (coll.data ?? 0)),
+      value: formatINR(collectedAmount),
+    },
+    {
+      label: view === "today" ? "Outstanding today" : "Outstanding yesterday",
+      value: att.data ? formatINR(outstandingAmount) : undefined,
     },
     {
       label: "Total outstanding",
