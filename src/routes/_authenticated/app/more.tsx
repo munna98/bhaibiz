@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/app/more")({
 function MorePage() {
   const { active } = useActiveMembership();
   const t = useT();
-  const [reportsOpen, setReportsOpen] = useState(true);
+  const [reportsOpen, setReportsOpen] = useState(false);
 
   const isOwner = active.role === "owner";
   const hasReports = canViewReports(active.role);

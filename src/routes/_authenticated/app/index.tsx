@@ -119,7 +119,7 @@ function Dashboard() {
   const cards = baseCards.filter((c) => c.show !== false);
 
   const trend = Array.from({ length: 7 }, (_, i) => {
-    const date = addDays(today, i - 6);
+    const date = addDays(today, -i);
     return {
       date,
       earned: report.commission
