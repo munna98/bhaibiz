@@ -1,0 +1,66 @@
+# BhaiBiz (bhaibiz.com)
+
+> BhaiBiz is a cloud-based workforce management, daily attendance register, and automated commission ledger designed specifically for labour contractors, manpower suppliers, and migrant worker ("bhai") camp managers in Kerala and across India.
+
+BhaiBiz solves the daily challenge of tracking who worked, how much commission is earned, who paid, and who still owes, replacing fragile paper diaries, WhatsApp notes, and spreadsheet formulas with a mobile-first, tamper-proof system.
+
+## Key Capabilities & Features
+
+- **Daily & Bulk Attendance Register**: Mark shifts in two taps (Worked, Not worked, or Pending) individually or in batch for whole squads. Marking a shift automatically earns daily commission based on active rates.
+- **Automated Commission Ledger & FIFO Dues Tracking**: Calculates exact net due (Commission Earned − Collections ± Adjustments = Net Due). Automatically clears oldest unpaid days first (FIFO). Due balances carry over across months without manual math.
+- **Insert-Only Rate Agreements**: Rates are stored with `effective_from` dates. Rate changes never alter past earned days or rewrite history.
+- **Instant Digital Receipts**: Record Cash, UPI, and Bank collections. Generates instant, uniquely sequenced receipts (e.g. BB-2026-0001) formatted for Bluetooth/thermal printers and one-tap WhatsApp sharing.
+- **Company Advances & Loan Repayment**: Advances given to workers and repayments are kept in a separate balance strictly distinguished from daily attendance commission dues.
+- **Enterprise-Grade Aadhaar Vault**: Aadhaar numbers are encrypted using AES-GCM 256-bit encryption with cryptographic HMAC hashes for duplicate checks. Staff supervisors see only the masked last 4 digits (`•••• •••• 1234`); only verified company owners can reveal the full 12 digits.
+- **Labour Camp & Accommodation Management**: Manage worker camps, quarters, and rooms. Track room capacities, allocate workers to beds, and assign field operators/supervisors per camp.
+- **Zero-Friction Staff Accounts**: Field operators and supervisors are provisioned directly with a username and password by the owner. No email address or complex verification is required, making it easy for non-tech-savvy site supervisors.
+- **Four-Tier Role-Based Access Control (RBAC)**:
+  - **Owner**: Full access, full Aadhaar reveal, company settings, rate changes, audit logs.
+  - **Manager**: Worker onboarding, daily attendance, collections, accommodation assignments, reports.
+  - **Operator**: Field attendance marking, assigned accommodation and squad management.
+  - **Accountant**: Financial tracking, collections, receipts, and ledger report exports.
+- **5 Real-Time Exportable Financial Reports**:
+  1. *Net Outstanding Due*: Worker-by-worker balances sorted by outstanding debt.
+  2. *Daily Attendance Log*: Shift-by-shift status across any period up to one year.
+  3. *Work Commission Earned*: Daily commission breakdown per worker and squad.
+  4. *Payment Receipts Register*: Full log of cleared collections with receipt numbers.
+  5. *Advance Loans & Repayments*: Detailed disbursal and repayment tracking.
+  All reports support 1-click formatted Excel (.xlsx) export and print-ready PDF layouts.
+- **Bilingual Interface**: Full support for English and Malayalam (മലയാളം) with seamless instant language switching.
+- **Multi-Company Tenancy**: Switch between multiple companies or contracting entities from a single user account, backed by Supabase PostgreSQL Row-Level Security (RLS).
+
+## Technical Specifications & Security Architecture
+
+- **Stack**: TanStack Start (React 19), TanStack Router, TanStack Query, Tailwind CSS v4, Supabase (PostgreSQL), Drizzle ORM.
+- **Encryption**: AES-256-GCM authenticated encryption for Aadhaar numbers (`AADHAAR_KEY` server secret), HMAC-SHA256 duplicate-check indexing.
+- **Tenant Isolation**: Every database table enforces `company_id` row-level security (RLS) security-definer checks via company memberships.
+- **Auditability**: Tenant-scoped audit triggers record every rate modification, attendance correction, cash collection, and identity reveal.
+
+## Frequently Asked Questions (FAQ)
+
+### What is BhaiBiz?
+BhaiBiz is an all-in-one software platform for labour suppliers and contractors to track daily migrant worker attendance, automate daily commission calculations, manage camp accommodations, safeguard Aadhaar documents, and collect payments with instant WhatsApp receipts.
+
+### How does BhaiBiz calculate worker commission?
+When a worker is marked as "Worked" for a given date, BhaiBiz identifies the active rate agreement in effect on or before that date and automatically generates an earn row in the commission ledger. If a shift is marked "Not worked", no commission is charged. Rate changes apply only on or after their effective start date and never alter past records.
+
+### Can field supervisors view workers' full Aadhaar numbers?
+No. To protect worker privacy and comply with identity security standards, staff and supervisors can only view the masked last 4 digits (`•••• •••• 1234`). Only the authenticated company owner can view the full 12 digits or upload new documents.
+
+### How are payments and dues settled?
+BhaiBiz uses a FIFO (First-In, First-Out) accounting ledger. When a collection (Cash, UPI, or Bank) is recorded, it automatically pays off the oldest unpaid shifts first. If a partial payment is made, the remaining balance continues to carry forward automatically.
+
+### What are the five exportable reports in BhaiBiz?
+1. Net Outstanding Due Report
+2. Daily Attendance Log
+3. Work Commission Earned Report
+4. Payment Receipts Register
+5. Advance Loans & Repayments Report
+All five can be exported to Excel (.xlsx) or printed/saved as PDF at any time.
+
+### Does BhaiBiz work in Malayalam?
+Yes. BhaiBiz provides complete native Malayalam (മലയാളം) support along with English. Users can toggle the language instantly from the navigation menu.
+
+## Quick Links
+- Website: https://bhaibiz.com/
+- Sign In & Registration: https://bhaibiz.com/auth

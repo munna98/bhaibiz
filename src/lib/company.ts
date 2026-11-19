@@ -69,8 +69,8 @@ export const myProfileQuery = () =>
       return {
         id: u.user.id,
         email: data?.email || u.user.email || null,
-        full_name: data?.full_name || (u.user.user_metadata?.full_name as string | undefined) || null,
-        username: data?.username || (u.user.user_metadata?.username as string | undefined) || null,
+        full_name: data?.full_name || (u.user.user_metadata?.["full_name"] as string | undefined) || null,
+        username: data?.username || (u.user.user_metadata?.["username"] as string | undefined) || null,
       };
     },
   });

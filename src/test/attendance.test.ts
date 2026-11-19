@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { addDays, canEditDate, needsReason, nextTileStatus, summarize } from "@/lib/attendance";
+import {
+  addDays,
+  canEditDate,
+  computeDayPaymentStatus,
+  needsReason,
+  nextTileStatus,
+  summarize,
+} from "@/lib/attendance";
 
 const today = "2026-11-10";
 
@@ -48,5 +55,117 @@ describe("tile view status cycling", () => {
   });
   it("toggles not_worked back to worked", () => {
     expect(nextTileStatus("not_worked")).toBe("worked");
+  });
+});
+
+describe("computeDayPaymentStatus", () => {
+  it("returns paid when commission entry is fully allocated", () => {
+    expect(
+      computeDayPaymentStatus({
+        mark: "worked",
+        outstanding: 50000,
+        hasPaymentOnDate: false,
+        entryAmount: 50000,
+        allocatedAmount: 50000,
+      }),
+    ).toBe("paid");
+  });
+
+  it("returns paid when a payment occurred on that date", () => {
+    expect(
+      computeDayPaymentStatus({
+        mark: "worked",
+        outstanding: 50000,
+        hasPaymentOnDate: true,
+        entryAmount: 50000,
+        allocatedAmount: 0,
+      }),
+    ).toBe("paid");
+  });
+
+  it("returns paid when total outstanding is zero", () => {
+    expect(
+      computeDayPaymentStatus({
+        mark: "worked",
+        outstanding: 0,
+        hasPaymentOnDate: false,
+        entryAmount: 50000,
+        allocatedAmount: 0,
+      }),
+    ).toBe("paid");
+  });
+
+  it("returns partial when commission entry is partially allocated", () => {
+    expect(
+      computeDayPaymentStatus({
+        mark: "worked",
+        outstanding: 30000,
+        hasPaymentOnDate: false,
+        entryAmount: 50000,
+        allocatedAmount: 20000,
+      }),
+    ).toBe("partial");
+  });
+
+  it("returns unpaid when worked but unallocated with positive outstanding and no payment on date", () => {
+    expect(
+      computeDayPaymentStatus({
+        mark: "worked",
+        outstanding: 50000,
+        hasPaymentOnDate: false,
+        entryAmount: 50000,
+        allocatedAmount: 0,
+      }),
+    ).toBe("unpaid");
+  });
+
+  it("returns paid when not worked and outstanding is zero", () => {
+    expect(
+      computeDayPaymentStatus({
+        mark: "not_worked",
+        outstanding: 0,
+        hasPaymentOnDate: false,
+      }),
+    ).toBe("paid");
+  });
+
+  it("returns paid when not worked but payment was made on that date", () => {
+    expect(
+      computeDayPaymentStatus({
+        mark: "not_worked",
+        outstanding: 25000,
+        hasPaymentOnDate: true,
+      }),
+    ).toBe("paid");
+  });
+
+  it("returns unpaid when not worked but has past outstanding and no payment on date", () => {
+    expect(
+      computeDayPaymentStatus({
+        mark: "not_worked",
+        outstanding: 25000,
+        hasPaymentOnDate: false,
+      }),
+    ).toBe("unpaid");
+  });
+
+  it("returns paid when pending and outstanding is zero", () => {
+    expect(
+      computeDayPaymentStatus({
+        mark: "pending",
+        outstanding: 0,
+        hasPaymentOnDate: false,
+      }),
+    ).toBe("paid");
+  });
+
+  it("returns unpaid when pending with positive outstanding and no payment on date", () => {
+    expect(
+      computeDayPaymentStatus({
+        mark: "pending",
+        outstanding: 15000,
+        hasPaymentOnDate: false,
+      }),
+    ).toBe("unpaid");
   });
 });

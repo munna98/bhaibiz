@@ -23,6 +23,7 @@ import {
   addDays,
   attendanceOnQuery,
   canEditDate,
+  computeDayPaymentStatus,
   needsReason,
   nextTileStatus,
   summarize,
@@ -48,6 +49,7 @@ import {
   balancesQuery,
   canRecordPayment,
   collectedOnQuery,
+  dailyPaymentsQuery,
   invalidateMoney,
   unpaidDaysQuery,
   validMoneyDate,
@@ -149,6 +151,8 @@ function AttendancePage() {
   const history = useQuery(reportsQuery(cid, today));
   const balances = useQuery(balancesQuery(cid));
   const coll = useQuery(collectedOnQuery(cid, date));
+  const dailyPayments = useQuery(dailyPaymentsQuery(cid, date));
+  const navigate = useNavigate();
   const due = useMemo(
     () => Object.fromEntries((balances.data ?? []).map((b) => [b.worker_id, b.outstanding])),
     [balances.data],
@@ -458,18 +462,48 @@ function AttendancePage() {
               {shown.map((w) => {
                 const m = markOf(w.id);
                 const isMutating = mark.isPending && mark.variables?.workerId === w.id;
+                const workerDue = due[w.id] ?? 0;
+                const entry = dailyPayments.data?.entriesByWorker[w.id];
+                const paymentInfo = dailyPayments.data?.paymentsByWorker[w.id];
+                const hasPaymentOnDate = Boolean((paymentInfo?.totalPaid ?? 0) > 0);
+
+                const paymentStatus = computeDayPaymentStatus({
+                  mark: m,
+                  outstanding: workerDue,
+                  hasPaymentOnDate,
+                  entryAmount: entry?.amount,
+                  allocatedAmount: entry?.allocated,
+                });
+
+                const isPaid = paymentStatus === "paid";
+                const isPartial = paymentStatus === "partial";
+
+                const paymentTitle = isPaid
+                  ? `${t("Paid")} · ${hasPaymentOnDate ? formatINR(paymentInfo?.totalPaid ?? 0) : t("No dues")}`
+                  : isPartial
+                    ? `${t("Partially paid")} · ${formatINR(workerDue)} ${t("due")}`
+                    : `${t("Not paid")} · ${formatINR(workerDue)} ${t("due")}`;
+                const paymentAriaLabel = `${w.full_name}: ${paymentTitle}`;
+
                 return (
-                  <button
+                  <div
                     key={w.id}
-                    type="button"
-                    disabled={!editable || isMutating}
+                    role="button"
+                    tabIndex={editable && !isMutating ? 0 : undefined}
+                    aria-disabled={!editable || isMutating}
                     onClick={() => toggleTile(w.id, w.full_name)}
+                    onKeyDown={(e) => {
+                      if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) {
+                        e.preventDefault();
+                        toggleTile(w.id, w.full_name);
+                      }
+                    }}
                     aria-label={`${w.full_name}: ${t(LABEL[m])}`}
                     className={cn(
                       "group relative flex flex-col items-center justify-center rounded-xl border-2 p-2 sm:p-2.5 text-center transition-all select-none min-h-[86px]",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                      "disabled:pointer-events-none disabled:opacity-60",
-                      editable && "cursor-pointer active:scale-[0.97]",
+                      (!editable || isMutating) && "pointer-events-none opacity-60",
+                      editable && !isMutating && "cursor-pointer active:scale-[0.97]",
                       m === "worked" && "border-primary bg-primary/5 hover:bg-primary/10",
                       m === "not_worked" &&
                         "border-destructive bg-destructive/5 hover:bg-destructive/10",
@@ -477,7 +511,42 @@ function AttendancePage() {
                         "border-border/80 bg-card hover:border-muted-foreground/30 hover:bg-accent/30",
                     )}
                   >
-                    <div className="absolute right-1.5 top-1.5">
+                    <button
+                      type="button"
+                      aria-label={paymentAriaLabel}
+                      title={paymentTitle}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (canRecordPayment(role) && workerDue > 0) {
+                          setCollectFor(w.id);
+                        } else if (paymentInfo?.latestPaymentId) {
+                          toast.info(`${w.full_name}: ${t("Paid on this date")}`, {
+                            action: {
+                              label: t("Receipt"),
+                              onClick: () =>
+                                navigate({
+                                  to: "/app/receipts/$paymentId",
+                                  params: { paymentId: paymentInfo.latestPaymentId! },
+                                }),
+                            },
+                          });
+                        } else {
+                          toast.info(`${w.full_name}: ${t("Payment is fully paid")}`);
+                        }
+                      }}
+                      className={cn(
+                        "absolute left-1.5 top-1.5 z-10 flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full shadow-sm transition-transform active:scale-90 touch-manipulation",
+                        isPaid
+                          ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                          : isPartial
+                            ? "bg-amber-500 text-white hover:bg-amber-600"
+                            : "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+                      )}
+                    >
+                      <IndianRupee className="h-3 w-3 sm:h-3.5 sm:w-3.5 stroke-[2.5]" />
+                    </button>
+
+                    <div className="absolute right-1.5 top-1.5 pointer-events-none">
                       {m === "worked" && (
                         <span className="flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
                           <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 stroke-[3]" />
@@ -511,22 +580,8 @@ function AttendancePage() {
                       <div className="truncate text-[10px] text-muted-foreground sm:text-xs">
                         {w.worker_code}
                       </div>
-                      {canRecordPayment(role) && (due[w.id] ?? 0) > 0 && (
-                        <button
-                          type="button"
-                          aria-label={`${t("Collect")} ${formatINR(due[w.id] ?? 0)}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCollectFor(w.id);
-                          }}
-                          className="mt-0.5 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary hover:bg-primary/20 sm:text-[10px]"
-                        >
-                          <IndianRupee className="h-2 w-2" />
-                          {t("due")}
-                        </button>
-                      )}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

@@ -69,6 +69,80 @@ export const collectedOnQuery = (companyId: string, date: string) =>
     },
   });
 
+export const dailyPaymentsQuery = (companyId: string, date: string) =>
+  queryOptions({
+    queryKey: ["daily-payments", companyId, date],
+    queryFn: async () => {
+      const [entriesRes, paymentsRes] = await Promise.all([
+        supabase
+          .from("commission_entries")
+          .select("id, worker_id, amount_paise")
+          .eq("company_id", companyId)
+          .eq("work_date", date)
+          .eq("kind", "earn")
+          .is("reversed_at", null),
+        supabase
+          .from("payments")
+          .select("id, worker_id, amount_paise")
+          .eq("company_id", companyId)
+          .eq("paid_on", date)
+          .is("voided_at", null),
+      ]);
+      if (entriesRes.error) throw entriesRes.error;
+      if (paymentsRes.error) throw paymentsRes.error;
+
+      const entries = entriesRes.data ?? [];
+      const payments = paymentsRes.data ?? [];
+
+      const entryIds = entries.map((e) => e.id);
+      let allocations: { commission_entry_id: string; amount_paise: number }[] = [];
+      if (entryIds.length > 0) {
+        const { data: allocs, error: allocErr } = await supabase
+          .from("payment_allocations")
+          .select("commission_entry_id, amount_paise, payment:payments!inner(voided_at)")
+          .in("commission_entry_id", entryIds)
+          .is("payment.voided_at", null);
+        if (allocErr) throw allocErr;
+        allocations = allocs ?? [];
+      }
+
+      const allocatedByEntry: Record<string, number> = {};
+      for (const a of allocations) {
+        allocatedByEntry[a.commission_entry_id] =
+          (allocatedByEntry[a.commission_entry_id] ?? 0) + a.amount_paise;
+      }
+
+      const paymentsByWorker: Record<
+        string,
+        { totalPaid: number; latestPaymentId?: string }
+      > = {};
+      for (const p of payments) {
+        const cur = paymentsByWorker[p.worker_id] ?? { totalPaid: 0 };
+        cur.totalPaid += p.amount_paise;
+        cur.latestPaymentId = p.id;
+        paymentsByWorker[p.worker_id] = cur;
+      }
+
+      const entriesByWorker: Record<
+        string,
+        { id: string; amount: number; allocated: number }
+      > = {};
+      for (const e of entries) {
+        const alloc = allocatedByEntry[e.id] ?? 0;
+        entriesByWorker[e.worker_id] = {
+          id: e.id,
+          amount: e.amount_paise,
+          allocated: alloc,
+        };
+      }
+
+      return {
+        paymentsByWorker,
+        entriesByWorker,
+      };
+    },
+  });
+
 export const unpaidDaysQuery = (workerId: string) =>
   queryOptions({
     queryKey: ["unpaid-days", workerId],
@@ -120,5 +194,5 @@ export const paymentQuery = (id: string) =>
   });
 
 export const invalidateMoney = (qc: { invalidateQueries: (o: { queryKey: unknown[] }) => unknown }) => {
-  for (const k of ["balances", "collected", "unpaid-days", "ledger", "payment", "reports", "audit"]) qc.invalidateQueries({ queryKey: [k] });
+  for (const k of ["balances", "collected", "daily-payments", "unpaid-days", "ledger", "payment", "reports", "audit"]) qc.invalidateQueries({ queryKey: [k] });
 };

@@ -37,6 +37,41 @@ export function summarize(marks: Mark[]) {
   return s;
 }
 
+export type DayPaymentStatus = "paid" | "partial" | "unpaid";
+
+export function computeDayPaymentStatus({
+  mark,
+  outstanding,
+  hasPaymentOnDate,
+  entryAmount = 0,
+  allocatedAmount = 0,
+}: {
+  mark: Mark;
+  outstanding: number;
+  hasPaymentOnDate: boolean;
+  entryAmount?: number | undefined;
+  allocatedAmount?: number | undefined;
+}): DayPaymentStatus {
+  const isAllocated = entryAmount > 0 && allocatedAmount >= entryAmount;
+  const isPartiallyAllocated = entryAmount > 0 && allocatedAmount > 0 && allocatedAmount < entryAmount;
+
+  if (mark === "worked") {
+    if (isAllocated || hasPaymentOnDate || outstanding <= 0) {
+      return "paid";
+    }
+    if (isPartiallyAllocated) {
+      return "partial";
+    }
+    return "unpaid";
+  }
+
+  // Not worked or pending:
+  if (hasPaymentOnDate || outstanding <= 0) {
+    return "paid";
+  }
+  return "unpaid";
+}
+
 export const attendanceOnQuery = (companyId: string, date: string) =>
   queryOptions({
     queryKey: ["attendance", companyId, date],
