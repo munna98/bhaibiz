@@ -1,8 +1,8 @@
 import { useT } from "@/lib/i18n";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Circle, LayoutGrid, LayoutList, Search, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Circle, IndianRupee, LayoutGrid, LayoutList, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
@@ -19,7 +19,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { cn } from "@/lib/utils";
 import { reportsQuery } from "@/lib/reports";
 import { workerActiveOn } from "@/lib/report-data";
-import { invalidateMoney } from "@/lib/money";
+import { allocateFIFO, balancesQuery, canRecordPayment, invalidateMoney, unpaidDaysQuery } from "@/lib/money";
+import { AmountForm, type AmountValues } from "@/components/money/AmountForm";
 import { DateInput } from "@/components/ui/date-input";
 import { accommodationsQuery } from "@/lib/accommodations";
 import {
@@ -69,6 +70,7 @@ function AttendancePage() {
   const [accFilter, setAccFilter] = useState<string>("all");
   const [ask, setAsk] = useState<{ workerId: string; name: string; status: AttendanceStatus } | null>(null);
   const [reason, setReason] = useState("");
+  const [collectFor, setCollectFor] = useState<string | null>(null);
   const qc = useQueryClient();
 
   const setViewMode = (mode: ViewMode) => {
@@ -84,6 +86,11 @@ function AttendancePage() {
   const accs = useQuery(accommodationsQuery(cid));
   const att = useQuery(attendanceOnQuery(cid, date));
   const history = useQuery(reportsQuery(cid, today));
+  const balances = useQuery(balancesQuery(cid));
+  const due = useMemo(
+    () => Object.fromEntries((balances.data ?? []).map((b) => [b.worker_id, b.outstanding])),
+    [balances.data],
+  );
   const marks = att.data?.byWorker ?? {};
   const editable = canEditDate(role, date, today);
 
@@ -256,7 +263,7 @@ function AttendancePage() {
                   <div className="truncate font-medium">{w.full_name}</div>
                   <div className="text-xs text-muted-foreground">{w.worker_code} · {t(LABEL[m])}</div>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex items-center gap-1">
                   <MarkBtn label="Worked" active={m === "worked"} tone="worked" disabled={!editable || mark.isPending} onClick={() => tap(w.id, w.full_name, "worked")}>
                     <Check className="h-4 w-4" />
                   </MarkBtn>
@@ -266,6 +273,18 @@ function AttendancePage() {
                   <span className={cn("flex h-9 w-9 items-center justify-center rounded-md", m === "pending" ? "text-accent-foreground" : "text-muted-foreground/30")} aria-label={t("Pending")}>
                     <Circle className="h-3 w-3 fill-current" />
                   </span>
+                  {canRecordPayment(role) && (due[w.id] ?? 0) > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="ml-1 h-9 gap-1 border-primary/40 px-2 text-primary hover:bg-primary/5 hover:text-primary"
+                      aria-label={`${t("Collect")} ${formatINR(due[w.id] ?? 0)}`}
+                      onClick={() => setCollectFor(w.id)}
+                    >
+                      <IndianRupee className="h-3.5 w-3.5" />
+                      <span className="text-xs font-semibold">{formatINR(due[w.id] ?? 0)}</span>
+                    </Button>
+                  )}
                 </div>
               </li>
             );
@@ -328,6 +347,17 @@ function AttendancePage() {
                       <div className="truncate text-[10px] text-muted-foreground sm:text-xs">
                         {w.worker_code}
                       </div>
+                      {canRecordPayment(role) && (due[w.id] ?? 0) > 0 && (
+                        <button
+                          type="button"
+                          aria-label={`${t("Collect")} ${formatINR(due[w.id] ?? 0)}`}
+                          onClick={(e) => { e.stopPropagation(); setCollectFor(w.id); }}
+                          className="mt-0.5 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary hover:bg-primary/20 sm:text-[10px]"
+                        >
+                          <IndianRupee className="h-2 w-2" />
+                          {t("due")}
+                        </button>
+                      )}
                     </div>
                   </button>
                 );
@@ -353,6 +383,18 @@ function AttendancePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {collectFor && (() => {
+        const w = workers.find((x) => x.id === collectFor);
+        if (!w) return null;
+        return (
+          <QuickCollectSheet
+            worker={w}
+            due={due[w.id] ?? 0}
+            onClose={() => setCollectFor(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -389,5 +431,89 @@ function MarkBtn({ label, active, tone, disabled, onClick, children }: {
     >
       {children}
     </Button>
+  );
+}
+
+
+type QuickCollectWorker = { id: string; full_name: string; worker_code: string };
+
+function QuickCollectSheet({ worker, due, onClose }: {
+  worker: QuickCollectWorker;
+  due: number;
+  onClose: () => void;
+}) {
+  const t = useT();
+  const qc = useQueryClient();
+  const navigate = useNavigate();
+  const days = useQuery(unpaidDaysQuery(worker.id));
+  const [amount, setAmount] = useState<number | null>(null);
+  const preview = amount && days.data ? allocateFIFO(days.data, amount) : [];
+
+  const pay = useMutation({
+    mutationFn: async (v: AmountValues) => {
+      const { data, error } = await supabase.rpc("record_payment", {
+        _worker: worker.id,
+        _amount: v.amount,
+        _paid_on: v.date,
+        _method: v.method,
+        _reference: v.text,
+      });
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: (id) => {
+      invalidateMoney(qc);
+      toast.success(t("Payment saved"), {
+        action: {
+          label: t("Receipt"),
+          onClick: () => navigate({ to: "/app/receipts/$paymentId", params: { paymentId: id } }),
+        },
+      });
+      onClose();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>
+            {t("Collect from")} {worker.full_name}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="rounded-lg border bg-muted/40 px-4 py-3">
+          <div className="text-xs text-muted-foreground">{t("Due now")}</div>
+          <div className="text-2xl font-bold">{formatINR(Math.max(0, due))}</div>
+          <div className="text-xs text-muted-foreground">{worker.worker_code}</div>
+        </div>
+
+        <AmountForm
+          submitLabel="Save payment"
+          maximum={Math.max(0, due)}
+          busy={pay.isPending}
+          onAmount={setAmount}
+          onSubmit={(v) => pay.mutate(v)}
+        />
+
+        {preview.length > 0 && (
+          <div className="rounded-lg border bg-muted/40 p-3 text-xs">
+            <div className="mb-1 font-medium">{t("Clears oldest days first")}</div>
+            {preview.map((p) => (
+              <div key={p.id} className="flex justify-between py-0.5">
+                <span>{formatDate(p.work_date)}</span>
+                <span>{formatINR(p.take)}</span>
+              </div>
+            ))}
+            {amount !== null && amount < due && (
+              <div className="mt-1 border-t pt-1 text-muted-foreground">
+                {t("Still due after this")}: {formatINR(due - amount)}
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
