@@ -4,25 +4,57 @@ import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tansta
 import { useEffect, useMemo, useState } from "react";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { Check, ChevronLeft, ChevronRight, Circle, IndianRupee, LayoutGrid, LayoutList, Search, X } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  IndianRupee,
+  LayoutGrid,
+  LayoutList,
+  Search,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
 import { formatDate, formatINR, signedPhotoUrls, todayISO, workersQuery } from "@/lib/workers";
 import {
-  addDays, attendanceOnQuery, canEditDate, needsReason, nextTileStatus, summarize, type AttendanceStatus, type Mark,
+  addDays,
+  attendanceOnQuery,
+  canEditDate,
+  needsReason,
+  nextTileStatus,
+  summarize,
+  type AttendanceStatus,
+  type Mark,
 } from "@/lib/attendance";
 import { useActiveMembership } from "../app";
 import { WorkerAvatar } from "@/components/workers/WorkerFields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { reportsQuery } from "@/lib/reports";
 import { workerActiveOn } from "@/lib/report-data";
-import { allocateFIFO, balancesQuery, canRecordPayment, invalidateMoney, unpaidDaysQuery, validMoneyDate } from "@/lib/money";
+import {
+  balancesQuery,
+  canRecordPayment,
+  collectedOnQuery,
+  invalidateMoney,
+  unpaidDaysQuery,
+  validMoneyDate,
+} from "@/lib/money";
 import { AmountForm, type AmountValues } from "@/components/money/AmountForm";
+import { DaySelectionCards } from "@/components/money/DaySelectionCards";
+import { useDaySelection } from "@/components/money/useDaySelection";
 import { DateInput } from "@/components/ui/date-input";
 import { accommodationsQuery } from "@/lib/accommodations";
 import {
@@ -44,9 +76,15 @@ export const Route = createFileRoute("/_authenticated/app/attendance")({
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { title: "Attendance — BhaiBiz" },
-      { name: "description", content: "Mark who worked each day; commission is added automatically." },
+      {
+        name: "description",
+        content: "Mark who worked each day; commission is added automatically.",
+      },
       { property: "og:title", content: "Attendance — BhaiBiz" },
-      { property: "og:description", content: "Mark who worked each day; commission is added automatically." },
+      {
+        property: "og:description",
+        content: "Mark who worked each day; commission is added automatically.",
+      },
     ],
   }),
   loader: async ({ context }) => {
@@ -56,7 +94,11 @@ export const Route = createFileRoute("/_authenticated/app/attendance")({
   component: AttendancePage,
 });
 
-const LABEL: Record<Mark, string> = { worked: "Worked", not_worked: "Not worked", pending: "Pending" };
+const LABEL: Record<Mark, string> = {
+  worked: "Worked",
+  not_worked: "Not worked",
+  pending: "Pending",
+};
 type ViewMode = "list" | "tile";
 const VIEW_STORAGE_KEY = "bhaibiz.attendance-view";
 
@@ -83,7 +125,11 @@ function AttendancePage() {
   const [view, setView] = useState<ViewMode>(getInitialView);
   const [q, setQ] = useState("");
   const [accFilter, setAccFilter] = useState<string>("all");
-  const [ask, setAsk] = useState<{ workerId: string; name: string; status: AttendanceStatus } | null>(null);
+  const [ask, setAsk] = useState<{
+    workerId: string;
+    name: string;
+    status: AttendanceStatus;
+  } | null>(null);
   const [reason, setReason] = useState("");
   const [collectFor, setCollectFor] = useState<string | null>(null);
   const qc = useQueryClient();
@@ -102,6 +148,7 @@ function AttendancePage() {
   const att = useQuery(attendanceOnQuery(cid, date));
   const history = useQuery(reportsQuery(cid, today));
   const balances = useQuery(balancesQuery(cid));
+  const coll = useQuery(collectedOnQuery(cid, date));
   const due = useMemo(
     () => Object.fromEntries((balances.data ?? []).map((b) => [b.worker_id, b.outstanding])),
     [balances.data],
@@ -115,7 +162,7 @@ function AttendancePage() {
         (w) =>
           w.joining_date <= date &&
           (workerActiveOn(w, date, history.data?.history ?? []) || marks[w.id]) &&
-          (accFilter === "all" || w.accommodation_id === accFilter)
+          (accFilter === "all" || w.accommodation_id === accFilter),
       ),
     [workers, date, marks, history.data, accFilter],
   );
@@ -123,11 +170,20 @@ function AttendancePage() {
   const sum = summarize(list.map((w) => markOf(w.id)));
   const shown = list.filter((w) => {
     const s = q.trim().toLowerCase();
-    return !s || w.full_name.toLowerCase().includes(s) || w.worker_code.toLowerCase().includes(s) || w.mobile.includes(s);
+    return (
+      !s ||
+      w.full_name.toLowerCase().includes(s) ||
+      w.worker_code.toLowerCase().includes(s) ||
+      w.mobile.includes(s)
+    );
   });
 
   const paths = list.map((w) => w.photo_path).filter((p): p is string => !!p);
-  const photos = useQuery({ queryKey: ["photos", paths], queryFn: () => signedPhotoUrls(paths), staleTime: 50 * 60 * 1000 });
+  const photos = useQuery({
+    queryKey: ["photos", paths],
+    queryFn: () => signedPhotoUrls(paths),
+    staleTime: 50 * 60 * 1000,
+  });
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["attendance", cid, date] });
@@ -138,7 +194,10 @@ function AttendancePage() {
   const mark = useMutation({
     mutationFn: async (v: { workerId: string; status: AttendanceStatus; reason?: string }) => {
       const { error } = await supabase.rpc("mark_attendance", {
-        _worker: v.workerId, _date: date, _status: v.status, ...(v.reason ? { _reason: v.reason } : {}),
+        _worker: v.workerId,
+        _date: date,
+        _status: v.status,
+        ...(v.reason ? { _reason: v.reason } : {}),
       });
       if (error) throw error;
     },
@@ -149,19 +208,33 @@ function AttendancePage() {
   const bulk = useMutation({
     mutationFn: async (status: AttendanceStatus) => {
       const ids = list.filter((w) => markOf(w.id) === "pending").map((w) => w.id);
-      const { data, error } = await supabase.rpc("mark_attendance_bulk", { _workers: ids, _date: date, _status: status });
+      const { data, error } = await supabase.rpc("mark_attendance_bulk", {
+        _workers: ids,
+        _date: date,
+        _status: status,
+      });
       if (error) throw error;
       return data;
     },
-    onSuccess: (n, status) => { toast.success(`${n} · ${t(LABEL[status])}`); refresh(); },
-    onError: (e: Error) => { toast.error(e.message); refresh(); },
+    onSuccess: (n, status) => {
+      toast.success(`${n} · ${t(LABEL[status])}`);
+      refresh();
+    },
+    onError: (e: Error) => {
+      toast.error(e.message);
+      refresh();
+    },
   });
 
   function tap(workerId: string, name: string, status: AttendanceStatus) {
     if (mark.isPending && mark.variables?.workerId === workerId) return;
     const cur = markOf(workerId);
     if (cur === status) return;
-    if (needsReason(cur, status, date, today)) { setReason(""); setAsk({ workerId, name, status }); return; }
+    if (needsReason(cur, status, date, today)) {
+      setReason("");
+      setAsk({ workerId, name, status });
+      return;
+    }
     mark.mutate({ workerId, status });
   }
 
@@ -183,33 +256,55 @@ function AttendancePage() {
       <h1 className="text-2xl font-bold">{t("Attendance")}</h1>
 
       <div className="mt-4 flex items-center gap-2">
-        <Button variant="outline" size="icon" aria-label={t("Previous day")} onClick={() => setDate(addDays(date, -1))}>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={t("Previous day")}
+          onClick={() => setDate(addDays(date, -1))}
+        >
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <DateInput value={date} max={today} onChange={(v) => v && setDate(v)} className="w-52" />
-        <Button variant="outline" size="icon" aria-label={t("Next day")} disabled={date >= today} onClick={() => setDate(addDays(date, 1))}>
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={t("Next day")}
+          disabled={date >= today}
+          onClick={() => setDate(addDays(date, 1))}
+        >
           <ChevronRight className="h-4 w-4" />
         </Button>
-        {date !== today && <Button variant="ghost" size="sm" onClick={() => setDate(today)}>{t("Today")}</Button>}
+        {date !== today && (
+          <Button variant="ghost" size="sm" onClick={() => setDate(today)}>
+            {t("Today")}
+          </Button>
+        )}
       </div>
       {!editable && (
         <p className="mt-2 text-sm text-muted-foreground">
-          {role === "accountant" ? t("You can view attendance but not change it.") : `${t("Cannot edit attendance on")} ${formatDate(date)}.`}
+          {role === "accountant"
+            ? t("You can view attendance but not change it.")
+            : `${t("Cannot edit attendance on")} ${formatDate(date)}.`}
         </p>
       )}
 
       <div className="sticky top-0 z-10 -mx-4 mt-4 grid grid-cols-5 gap-1 border-y bg-background/95 px-4 py-3 text-center backdrop-blur md:mx-0 md:rounded-xl md:border">
-        <Stat label="Active" value={sum.total} />
         <Stat label="Worked" value={sum.worked} className="text-primary" />
         <Stat label="Not worked" value={sum.not_worked} className="text-destructive" />
         <Stat label="Pending" value={sum.pending} className="text-accent-foreground" />
         <Stat label="Earned" value={att.data ? formatINR(att.data.earned) : "—"} />
+        <Stat label="Collected" value={coll.data !== undefined ? formatINR(coll.data) : "—"} />
       </div>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder={t("Search name, ID or mobile")} value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
+          <Input
+            placeholder={t("Search name, ID or mobile")}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="pl-9"
+          />
         </div>
         {accs.data && accs.data.length > 0 && (
           <div className="w-full sm:w-52">
@@ -231,18 +326,34 @@ function AttendancePage() {
         <div className="flex items-center justify-end gap-2">
           {editable && sum.pending > 0 && (
             <div className="flex gap-2">
-              <Button size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate("worked")}>{t("All pending → Worked")}</Button>
-              <Button size="sm" variant="outline" disabled={bulk.isPending} onClick={() => bulk.mutate("not_worked")}>{t("→ Not worked")}</Button>
+              <Button size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate("worked")}>
+                {t("All pending → Worked")}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={bulk.isPending}
+                onClick={() => bulk.mutate("not_worked")}
+              >
+                {t("→ Not worked")}
+              </Button>
             </div>
           )}
-          <div className="hidden sm:flex items-center rounded-lg border bg-muted p-0.5 shrink-0" role="group" aria-label={t("View layout")}>
+          <div
+            className="hidden sm:flex items-center rounded-lg border bg-muted p-0.5 shrink-0"
+            role="group"
+            aria-label={t("View layout")}
+          >
             <Button
               type="button"
               variant="ghost"
               size="icon"
               aria-label={t("List view")}
               aria-pressed={view === "list"}
-              className={cn("h-8 w-8 rounded-md p-0", view === "list" && "bg-background text-foreground shadow-sm")}
+              className={cn(
+                "h-8 w-8 rounded-md p-0",
+                view === "list" && "bg-background text-foreground shadow-sm",
+              )}
               onClick={() => setViewMode("list")}
             >
               <LayoutList className="h-4 w-4" />
@@ -253,7 +364,10 @@ function AttendancePage() {
               size="icon"
               aria-label={t("Tile view")}
               aria-pressed={view === "tile"}
-              className={cn("h-8 w-8 rounded-md p-0", view === "tile" && "bg-background text-foreground shadow-sm")}
+              className={cn(
+                "h-8 w-8 rounded-md p-0",
+                view === "tile" && "bg-background text-foreground shadow-sm",
+              )}
               onClick={() => setViewMode("tile")}
             >
               <LayoutGrid className="h-4 w-4" />
@@ -275,19 +389,43 @@ function AttendancePage() {
             const m = markOf(w.id);
             return (
               <li key={w.id} className="flex items-center gap-3 p-3">
-                <WorkerAvatar name={w.full_name} url={w.photo_path ? photos.data?.[w.photo_path] : null} size="sm" />
+                <WorkerAvatar
+                  name={w.full_name}
+                  url={w.photo_path ? photos.data?.[w.photo_path] : null}
+                  size="sm"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{w.full_name}</div>
-                  <div className="text-xs text-muted-foreground">{w.worker_code} · {t(LABEL[m])}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {w.worker_code} · {t(LABEL[m])}
+                  </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <MarkBtn label="Worked" active={m === "worked"} tone="worked" disabled={!editable || mark.isPending} onClick={() => tap(w.id, w.full_name, "worked")}>
+                  <MarkBtn
+                    label="Worked"
+                    active={m === "worked"}
+                    tone="worked"
+                    disabled={!editable || mark.isPending}
+                    onClick={() => tap(w.id, w.full_name, "worked")}
+                  >
                     <Check className="h-4 w-4" />
                   </MarkBtn>
-                  <MarkBtn label="Not worked" active={m === "not_worked"} tone="not" disabled={!editable || mark.isPending} onClick={() => tap(w.id, w.full_name, "not_worked")}>
+                  <MarkBtn
+                    label="Not worked"
+                    active={m === "not_worked"}
+                    tone="not"
+                    disabled={!editable || mark.isPending}
+                    onClick={() => tap(w.id, w.full_name, "not_worked")}
+                  >
                     <X className="h-4 w-4" />
                   </MarkBtn>
-                  <span className={cn("flex h-9 w-9 items-center justify-center rounded-md", m === "pending" ? "text-accent-foreground" : "text-muted-foreground/30")} aria-label={t("Pending")}>
+                  <span
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-md",
+                      m === "pending" ? "text-accent-foreground" : "text-muted-foreground/30",
+                    )}
+                    aria-label={t("Pending")}
+                  >
                     <Circle className="h-3 w-3 fill-current" />
                   </span>
                   {canRecordPayment(role) && (due[w.id] ?? 0) > 0 && (
@@ -333,8 +471,10 @@ function AttendancePage() {
                       "disabled:pointer-events-none disabled:opacity-60",
                       editable && "cursor-pointer active:scale-[0.97]",
                       m === "worked" && "border-primary bg-primary/5 hover:bg-primary/10",
-                      m === "not_worked" && "border-destructive bg-destructive/5 hover:bg-destructive/10",
-                      m === "pending" && "border-border/80 bg-card hover:border-muted-foreground/30 hover:bg-accent/30",
+                      m === "not_worked" &&
+                        "border-destructive bg-destructive/5 hover:bg-destructive/10",
+                      m === "pending" &&
+                        "border-border/80 bg-card hover:border-muted-foreground/30 hover:bg-accent/30",
                     )}
                   >
                     <div className="absolute right-1.5 top-1.5">
@@ -355,10 +495,17 @@ function AttendancePage() {
                       )}
                     </div>
 
-                    <WorkerAvatar name={w.full_name} url={w.photo_path ? photos.data?.[w.photo_path] : null} size="sm" />
+                    <WorkerAvatar
+                      name={w.full_name}
+                      url={w.photo_path ? photos.data?.[w.photo_path] : null}
+                      size="sm"
+                    />
 
                     <div className="mt-1.5 w-full min-w-0">
-                      <div className="truncate text-xs font-semibold text-foreground sm:text-sm" title={w.full_name}>
+                      <div
+                        className="truncate text-xs font-semibold text-foreground sm:text-sm"
+                        title={w.full_name}
+                      >
                         {w.full_name}
                       </div>
                       <div className="truncate text-[10px] text-muted-foreground sm:text-xs">
@@ -368,7 +515,10 @@ function AttendancePage() {
                         <button
                           type="button"
                           aria-label={`${t("Collect")} ${formatINR(due[w.id] ?? 0)}`}
-                          onClick={(e) => { e.stopPropagation(); setCollectFor(w.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCollectFor(w.id);
+                          }}
                           className="mt-0.5 inline-flex items-center gap-0.5 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary hover:bg-primary/20 sm:text-[10px]"
                         >
                           <IndianRupee className="h-2 w-2" />
@@ -387,36 +537,58 @@ function AttendancePage() {
       <Dialog open={!!ask} onOpenChange={(o) => !o && setAsk(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("Change attendance")}: {ask?.name} · {ask ? t(LABEL[ask.status]) : ""} · {formatDate(date)}?</DialogTitle>
+            <DialogTitle>
+              {t("Change attendance")}: {ask?.name} · {ask ? t(LABEL[ask.status]) : ""} ·{" "}
+              {formatDate(date)}?
+            </DialogTitle>
           </DialogHeader>
-          <Textarea placeholder={t("Reason for the correction")} value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Textarea
+            placeholder={t("Reason for the correction")}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAsk(null)}>{t("Cancel")}</Button>
+            <Button variant="outline" onClick={() => setAsk(null)}>
+              {t("Cancel")}
+            </Button>
             <Button
               disabled={!reason.trim() || mark.isPending}
-              onClick={() => { if (ask) mark.mutate({ ...ask, reason }, { onSuccess: () => setAsk(null) }); }}
+              onClick={() => {
+                if (ask) mark.mutate({ ...ask, reason }, { onSuccess: () => setAsk(null) });
+              }}
             >
-              {t("Save correction")}</Button>
+              {t("Save correction")}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {collectFor && (() => {
-        const w = workers.find((x) => x.id === collectFor);
-        if (!w) return null;
-        return (
-          <QuickCollectSheet
-            worker={w}
-            due={due[w.id] ?? 0}
-            onClose={() => setCollectFor(null)}
-          />
-        );
-      })()}
+      {collectFor &&
+        (() => {
+          const w = workers.find((x) => x.id === collectFor);
+          if (!w) return null;
+          return (
+            <QuickCollectSheet
+              worker={w}
+              due={due[w.id] ?? 0}
+              attendanceDate={date}
+              onClose={() => setCollectFor(null)}
+            />
+          );
+        })()}
     </div>
   );
 }
 
-function Stat({ label, value, className }: { label: string; value: string | number; className?: string }) {
+function Stat({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string | number;
+  className?: string;
+}) {
   const t = useT();
   return (
     <div>
@@ -426,8 +598,20 @@ function Stat({ label, value, className }: { label: string; value: string | numb
   );
 }
 
-function MarkBtn({ label, active, tone, disabled, onClick, children }: {
-  label: string; active: boolean; tone: "worked" | "not"; disabled: boolean; onClick: () => void; children: React.ReactNode;
+function MarkBtn({
+  label,
+  active,
+  tone,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  active: boolean;
+  tone: "worked" | "not";
+  disabled: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
 }) {
   const t = useT();
   return (
@@ -451,12 +635,17 @@ function MarkBtn({ label, active, tone, disabled, onClick, children }: {
   );
 }
 
-
 type QuickCollectWorker = { id: string; full_name: string; worker_code: string };
 
-function QuickCollectSheet({ worker, due, onClose }: {
+function QuickCollectSheet({
+  worker,
+  due,
+  attendanceDate,
+  onClose,
+}: {
   worker: QuickCollectWorker;
   due: number;
+  attendanceDate?: string;
   onClose: () => void;
 }) {
   const t = useT();
@@ -464,7 +653,14 @@ function QuickCollectSheet({ worker, due, onClose }: {
   const navigate = useNavigate();
   const days = useQuery(unpaidDaysQuery(worker.id));
   const [amount, setAmount] = useState<number | null>(null);
-  const preview = amount && days.data ? allocateFIFO(days.data, amount) : [];
+
+  const { amt, selectedIds, unpaidDays, handleToggleDay, handleAmountChange } = useDaySelection({
+    days: days.data,
+    mode: "today",
+    totalDue: Math.max(0, due),
+    targetDate: attendanceDate,
+    onAmountChange: setAmount,
+  });
 
   const pay = useMutation({
     mutationFn: async (v: AmountValues) => {
@@ -510,26 +706,17 @@ function QuickCollectSheet({ worker, due, onClose }: {
           submitLabel="Save payment"
           maximum={Math.max(0, due)}
           busy={pay.isPending}
-          onAmount={setAmount}
+          amountValue={amt}
+          onAmountValueChange={handleAmountChange}
+          dayCards={
+            <DaySelectionCards
+              days={unpaidDays}
+              selectedIds={selectedIds}
+              onToggleDay={handleToggleDay}
+            />
+          }
           onSubmit={(v) => pay.mutate(v)}
         />
-
-        {preview.length > 0 && (
-          <div className="rounded-lg border bg-muted/40 p-3 text-xs">
-            <div className="mb-1 font-medium">{t("Clears oldest days first")}</div>
-            {preview.map((p) => (
-              <div key={p.id} className="flex justify-between py-0.5">
-                <span>{formatDate(p.work_date)}</span>
-                <span>{formatINR(p.take)}</span>
-              </div>
-            ))}
-            {amount !== null && amount < due && (
-              <div className="mt-1 border-t pt-1 text-muted-foreground">
-                {t("Still due after this")}: {formatINR(due - amount)}
-              </div>
-            )}
-          </div>
-        )}
       </DialogContent>
     </Dialog>
   );
