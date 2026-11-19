@@ -1,7 +1,9 @@
 import { useT } from "@/lib/i18n";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { Check, ChevronLeft, ChevronRight, Circle, IndianRupee, LayoutGrid, LayoutList, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +21,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { cn } from "@/lib/utils";
 import { reportsQuery } from "@/lib/reports";
 import { workerActiveOn } from "@/lib/report-data";
-import { allocateFIFO, balancesQuery, canRecordPayment, invalidateMoney, unpaidDaysQuery } from "@/lib/money";
+import { allocateFIFO, balancesQuery, canRecordPayment, invalidateMoney, unpaidDaysQuery, validMoneyDate } from "@/lib/money";
 import { AmountForm, type AmountValues } from "@/components/money/AmountForm";
 import { DateInput } from "@/components/ui/date-input";
 import { accommodationsQuery } from "@/lib/accommodations";
@@ -31,7 +33,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const schema = z.object({
+  date: fallback(z.string(), "").default(""),
+});
+
 export const Route = createFileRoute("/_authenticated/app/attendance")({
+  validateSearch: zodValidator(schema),
   head: () => ({
     meta: [
       { property: "og:type", content: "website" },
@@ -61,10 +68,18 @@ function getInitialView(): ViewMode {
 function AttendancePage() {
   const t = useT();
   const { active } = useActiveMembership();
+  const search = Route.useSearch();
   const cid = active.company_id;
   const role = active.role;
   const today = todayISO();
-  const [date, setDate] = useState(today);
+  const initialDate = search.date && validMoneyDate(search.date, today) ? search.date : today;
+  const [date, setDate] = useState(initialDate);
+
+  useEffect(() => {
+    if (search.date && validMoneyDate(search.date, today)) {
+      setDate(search.date);
+    }
+  }, [search.date, today]);
   const [view, setView] = useState<ViewMode>(getInitialView);
   const [q, setQ] = useState("");
   const [accFilter, setAccFilter] = useState<string>("all");

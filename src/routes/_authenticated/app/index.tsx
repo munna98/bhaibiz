@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { formatINR, todayISO, workersQuery } from "@/lib/workers";
@@ -43,6 +43,7 @@ export const Route = createFileRoute("/_authenticated/app/")({
 function Dashboard() {
   const { active } = useActiveMembership();
   const { t, language } = useLanguage();
+  const navigate = useNavigate();
   const [view, setView] = useState<"today" | "yesterday">("today");
 
   const today = todayISO();
@@ -163,7 +164,42 @@ function Dashboard() {
           </div>
         ))}
       </div>
-      <section className="mt-8"><h2 className="text-lg font-semibold">{t("Last 7 days")}</h2><div className="mt-3 overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-y"><tr><th className="py-3">{t("Date")}</th><th>{t("Earned")}</th><th>{t("Collected")}</th></tr></thead><tbody>{trend.map(d => <tr className={`border-b ${d.date === selectedDate ? "bg-accent/20 font-medium" : ""}`} key={d.date}><td className="py-3">{formatDate(d.date)}{d.date === today ? <span className="ml-1.5 text-xs text-primary">{t("today")}</span> : d.date === yesterday ? <span className="ml-1.5 text-xs text-muted-foreground">{t("yesterday")}</span> : null}</td><td>{formatINR(d.earned)}</td><td>{formatINR(d.collected)}</td></tr>)}</tbody></table></div></section>
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold">{t("Last 7 days")}</h2>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-y">
+              <tr>
+                <th className="py-3">{t("Date")}</th>
+                <th>{t("Earned")}</th>
+                <th>{t("Collected")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trend.map((d) => (
+                <tr
+                  key={d.date}
+                  onClick={() => navigate({ to: "/app/attendance", search: { date: d.date } })}
+                  className={`border-b cursor-pointer transition-colors hover:bg-muted/50 ${
+                    d.date === selectedDate ? "bg-accent/20 font-medium" : ""
+                  }`}
+                >
+                  <td className="py-3">
+                    {formatDate(d.date)}
+                    {d.date === today ? (
+                      <span className="ml-1.5 text-xs text-primary">{t("today")}</span>
+                    ) : d.date === yesterday ? (
+                      <span className="ml-1.5 text-xs text-muted-foreground">{t("yesterday")}</span>
+                    ) : null}
+                  </td>
+                  <td>{formatINR(d.earned)}</td>
+                  <td>{formatINR(d.collected)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
       {workers.data?.length === 0 ? (
         isOperator ? (
           <div className="mt-6 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
