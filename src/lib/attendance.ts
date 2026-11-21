@@ -37,7 +37,7 @@ export function summarize(marks: Mark[]) {
   return s;
 }
 
-export type DayPaymentStatus = "paid" | "partial" | "unpaid";
+export type DayPaymentStatus = "paid" | "partial" | "unpaid" | "no_dues";
 
 export function computeDayPaymentStatus({
   mark,
@@ -55,20 +55,18 @@ export function computeDayPaymentStatus({
   const isAllocated = entryAmount > 0 && allocatedAmount >= entryAmount;
   const isPartiallyAllocated = entryAmount > 0 && allocatedAmount > 0 && allocatedAmount < entryAmount;
 
-  if (mark === "worked") {
-    if (isAllocated || hasPaymentOnDate || outstanding <= 0) {
-      return "paid";
-    }
-    if (isPartiallyAllocated) {
-      return "partial";
-    }
-    return "unpaid";
-  }
-
-  // Not worked or pending:
-  if (hasPaymentOnDate || outstanding <= 0) {
+  if (hasPaymentOnDate || (mark === "worked" && isAllocated)) {
     return "paid";
   }
+
+  if (mark === "worked" && isPartiallyAllocated && outstanding > 0) {
+    return "partial";
+  }
+
+  if (outstanding <= 0) {
+    return "no_dues";
+  }
+
   return "unpaid";
 }
 

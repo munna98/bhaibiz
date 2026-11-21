@@ -42,6 +42,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { reportsQuery } from "@/lib/reports";
 import { workerActiveOn } from "@/lib/report-data";
@@ -133,6 +143,7 @@ function AttendancePage() {
     status: AttendanceStatus;
   } | null>(null);
   const [reason, setReason] = useState("");
+  const [bulkTarget, setBulkTarget] = useState<AttendanceStatus | null>(null);
   const [collectFor, setCollectFor] = useState<string | null>(null);
   const qc = useQueryClient();
 
@@ -330,14 +341,14 @@ function AttendancePage() {
         <div className="flex items-center justify-end gap-2">
           {editable && sum.pending > 0 && (
             <div className="flex gap-2">
-              <Button size="sm" disabled={bulk.isPending} onClick={() => bulk.mutate("worked")}>
+              <Button size="sm" disabled={bulk.isPending} onClick={() => setBulkTarget("worked")}>
                 {t("All pending → Worked")}
               </Button>
               <Button
                 size="sm"
                 variant="outline"
                 disabled={bulk.isPending}
-                onClick={() => bulk.mutate("not_worked")}
+                onClick={() => setBulkTarget("not_worked")}
               >
                 {t("→ Not worked")}
               </Button>
@@ -477,12 +488,15 @@ function AttendancePage() {
 
                 const isPaid = paymentStatus === "paid";
                 const isPartial = paymentStatus === "partial";
+                const isNoDues = paymentStatus === "no_dues";
 
                 const paymentTitle = isPaid
                   ? `${t("Paid")} · ${hasPaymentOnDate ? formatINR(paymentInfo?.totalPaid ?? 0) : t("No dues")}`
                   : isPartial
                     ? `${t("Partially paid")} · ${formatINR(workerDue)} ${t("due")}`
-                    : `${t("Not paid")} · ${formatINR(workerDue)} ${t("due")}`;
+                    : isNoDues
+                      ? t("No dues")
+                      : `${t("Not paid")} · ${formatINR(workerDue)} ${t("due")}`;
                 const paymentAriaLabel = `${w.full_name}: ${paymentTitle}`;
 
                 return (
@@ -531,16 +545,18 @@ function AttendancePage() {
                             },
                           });
                         } else {
-                          toast.info(`${w.full_name}: ${t("Payment is fully paid")}`);
+                          toast.info(`${w.full_name}: ${t("No dues")}`);
                         }
                       }}
                       className={cn(
                         "absolute left-1.5 top-1.5 z-10 flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full shadow-sm transition-transform active:scale-90 touch-manipulation",
                         isPaid
-                          ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                          ? "bg-primary text-primary-foreground hover:bg-primary/90"
                           : isPartial
                             ? "bg-amber-500 text-white hover:bg-amber-600"
-                            : "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+                            : isNoDues
+                              ? "bg-muted text-muted-foreground border border-border/80 hover:bg-muted/80"
+                              : "bg-destructive text-destructive-foreground hover:bg-destructive/90",
                       )}
                     >
                       <IndianRupee className="h-3 w-3 sm:h-3.5 sm:w-3.5 stroke-[2.5]" />
@@ -617,6 +633,44 @@ function AttendancePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={bulkTarget !== null} onOpenChange={(open) => !open && setBulkTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {bulkTarget === "not_worked"
+                ? t("Mark all pending as not worked?")
+                : t("Mark all pending as worked?")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkTarget === "not_worked"
+                ? `${sum.pending} ${t("pending workers will be marked as Not worked for")} ${formatDate(date)}.`
+                : `${sum.pending} ${t("pending workers will be marked as Worked for")} ${formatDate(date)}. ${t("Daily commission will be added automatically.")}`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulk.isPending}>{t("Cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulk.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (bulkTarget) {
+                  bulk.mutate(bulkTarget, {
+                    onSettled: () => setBulkTarget(null),
+                  });
+                }
+              }}
+              className={
+                bulkTarget === "not_worked"
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+            >
+              {bulk.isPending ? t("Saving…") : t("Confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {collectFor &&
         (() => {
