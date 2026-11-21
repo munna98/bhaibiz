@@ -102,7 +102,7 @@ function CollectPage() {
             >
               <WorkerAvatar name={w.full_name} size="sm" />
               <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{w.full_name}</div>
+                <div className="truncate font-medium capitalize">{w.full_name}</div>
                 <div className="text-xs text-muted-foreground">
                   {w.worker_code} {w.status === "inactive" && <StatusBadge status="inactive" />}
                 </div>
@@ -171,7 +171,7 @@ function CollectFor({
       </Button>
       <div className="mt-2 rounded-xl border bg-card p-4">
         <div className="font-semibold">
-          {worker.full_name}{" "}
+          <span className="capitalize">{worker.full_name}</span>{" "}
           <span className="text-sm text-muted-foreground">{worker.worker_code}</span>
         </div>
         <div className="mt-1 text-sm text-muted-foreground">{t("Due now")}</div>

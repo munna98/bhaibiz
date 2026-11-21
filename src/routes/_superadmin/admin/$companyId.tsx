@@ -312,7 +312,7 @@ function TenantDetail() {
               {members.map((m) => (
                 <div key={m.id} className="flex items-center gap-3 px-5 py-3">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">
+                    <div className="font-medium truncate capitalize">
                       {m.profile.full_name ?? m.profile.username ?? m.user_id.slice(0, 8)}
                     </div>
                     <div className="text-xs text-muted-foreground truncate">
@@ -347,7 +347,7 @@ function TenantDetail() {
               {workers.map((w) => (
                 <div key={w.id} className="flex items-center gap-3 px-5 py-3">
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{w.full_name}</div>
+                    <div className="font-medium truncate capitalize">{w.full_name}</div>
                     <div className="text-xs text-muted-foreground">
                       {w.worker_code} · {w.mobile}
                       {w.category ? ` · ${w.category}` : ""}

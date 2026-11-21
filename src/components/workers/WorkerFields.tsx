@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select";
 import { INDIAN_STATES, WORKER_CATEGORIES, normalizeMobile, todayISO, type Worker } from "@/lib/workers";
 import { accommodationsQuery } from "@/lib/accommodations";
-import { cn } from "@/lib/utils";
+import { cn, capitalizeWords } from "@/lib/utils";
 import { DateInput } from "@/components/ui/date-input";
 
 export type PersonalForm = {
@@ -62,9 +62,10 @@ export function checkPersonal(f: PersonalForm): { errors: PersonalErrors; value:
     errors,
     value: {
       ...f,
-      full_name: f.full_name.trim(),
+      full_name: capitalizeWords(f.full_name.trim()),
       mobile: mobile ?? f.mobile,
       alt_mobile: f.alt_mobile.trim() ? normalizeMobile(f.alt_mobile) ?? f.alt_mobile : "",
+      emergency_name: f.emergency_name.trim() ? capitalizeWords(f.emergency_name.trim()) : "",
       accommodation_id: f.accommodation_id || null,
     },
   };
@@ -105,11 +106,21 @@ export function WorkerPersonalFields({
   });
   const accommodations = accQuery.data ?? [];
 
-  const set = (k: keyof PersonalForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => onChange({ ...value, [k]: e.target.value });
+  const set = (k: keyof PersonalForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const val = (k === "full_name" || k === "emergency_name")
+      ? capitalizeWords(e.target.value)
+      : e.target.value;
+    onChange({ ...value, [k]: val });
+  };
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <Field label="Full name" required error={errors.full_name} className="sm:col-span-2">
-        <Input value={value.full_name} onChange={set("full_name")} autoComplete="off" />
+        <Input
+          value={value.full_name}
+          onChange={set("full_name")}
+          autoCapitalize="words"
+          autoComplete="off"
+        />
       </Field>
       <Field label="Mobile" required error={errors.mobile}>
         <Input value={value.mobile} onChange={set("mobile")} inputMode="tel" placeholder="98765 43210" />
@@ -137,7 +148,7 @@ export function WorkerPersonalFields({
               <SelectItem value="none">{t("No accommodation")}</SelectItem>
               {accommodations.map((acc) => (
                 <SelectItem key={acc.id} value={acc.id}>
-                  {acc.name}
+                  <span className="capitalize">{acc.name}</span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -155,7 +166,11 @@ export function WorkerPersonalFields({
         <Input value={value.kerala_address} onChange={set("kerala_address")} />
       </Field>
       <Field label="Emergency contact name">
-        <Input value={value.emergency_name} onChange={set("emergency_name")} />
+        <Input
+          value={value.emergency_name}
+          onChange={set("emergency_name")}
+          autoCapitalize="words"
+        />
       </Field>
       <Field label="Emergency contact phone" error={errors.emergency_phone}>
         <Input value={value.emergency_phone} onChange={set("emergency_phone")} inputMode="tel" />
@@ -167,14 +182,24 @@ export function WorkerPersonalFields({
   );
 }
 
-export function WorkerAvatar({ name, url, size = "md" }: { name: string; url?: string | null | undefined; size?: "sm" | "md" | "lg" }) {
+export function WorkerAvatar({
+  name,
+  url,
+  size = "md",
+  className,
+}: {
+  name: string;
+  url?: string | null | undefined;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}) {
   const t = useT();
   const dims = size === "lg" ? "h-20 w-20 text-2xl" : size === "sm" ? "h-9 w-9 text-sm" : "h-11 w-11 text-base";
   const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
   return url ? (
-    <img src={url} alt={name} className={cn("shrink-0 rounded-full object-cover", dims)} />
+    <img src={url} alt={name} className={cn("shrink-0 rounded-full object-cover", dims, className)} />
   ) : (
-    <div className={cn("flex shrink-0 items-center justify-center rounded-full bg-secondary font-semibold text-secondary-foreground", dims)}>
+    <div className={cn("flex shrink-0 items-center justify-center rounded-full bg-secondary font-semibold text-secondary-foreground", dims, className)}>
       {initials || "?"}
     </div>
   );

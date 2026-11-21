@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { checkPersonal, emptyPersonal, personalFromWorker } from "@/components/workers/WorkerFields";
 import { canRecordPayment, canHandleMoney } from "@/lib/money";
 import { canManageWorkers } from "@/lib/workers";
+import { capitalizeWords } from "@/lib/utils";
 import type { AppRole } from "@/lib/company";
 
 describe("Accommodations & Operator Scoping", () => {
@@ -83,5 +84,27 @@ describe("Accommodations & Operator Scoping", () => {
     expect(operatorRoutes).not.toContain("/app/workers");
     expect(operatorRoutes).not.toContain("/app/accommodations");
     expect(operatorRoutes).not.toContain("/app/reports");
+  });
+
+  it("capitalizes the first letter of worker, team member, and accommodation names", () => {
+    expect(capitalizeWords("kiran kumar")).toBe("Kiran Kumar");
+    expect(capitalizeWords("ramesh")).toBe("Ramesh");
+    expect(capitalizeWords("camp 1")).toBe("Camp 1");
+    expect(capitalizeWords("room-102")).toBe("Room-102");
+    expect(capitalizeWords("north camp (block a)")).toBe("North Camp (Block A)");
+    expect(capitalizeWords("")).toBe("");
+  });
+
+  it("checkPersonal automatically capitalizes worker full_name and emergency_name", () => {
+    const raw = {
+      ...emptyPersonal(),
+      full_name: "arun kumar",
+      mobile: "9876543210",
+      emergency_name: "suresh babu",
+    };
+    const { errors, value } = checkPersonal(raw);
+    expect(Object.keys(errors)).toHaveLength(0);
+    expect(value.full_name).toBe("Arun Kumar");
+    expect(value.emergency_name).toBe("Suresh Babu");
   });
 });

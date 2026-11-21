@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Camera, ShieldCheck } from "lucide-react";
 import { formatAadhaar, validateAadhaar } from "@/lib/aadhaar";
 import { AadhaarInput } from "@/components/workers/AadhaarInput";
-import { AadhaarCopyPicker } from "@/components/workers/AadhaarCopyPicker";
+import { AadhaarCopyPicker, type AadhaarFiles } from "@/components/workers/AadhaarCopyPicker";
 import { canManageWorkers, formatINR, rupeesToPaise } from "@/lib/workers";
 import { createWorker } from "@/lib/workers.functions";
 import { uploadAadhaarDoc, uploadWorkerPhoto } from "@/lib/worker-uploads";
@@ -54,7 +54,7 @@ function NewWorkerPage() {
   const [photo, setPhoto] = useState<File | null>(null);
   const [aadhaar, setAadhaar] = useState("");
   const [aadhaarErr, setAadhaarErr] = useState<string | null>(null);
-  const [doc, setDoc] = useState<File | null>(null);
+  const [docs, setDocs] = useState<AadhaarFiles>({ front: null, back: null });
   const [rate, setRate] = useState("");
   const [rateFrom, setRateFrom] = useState("");
   const [rateErr, setRateErr] = useState<string | null>(null);
@@ -92,7 +92,8 @@ function NewWorkerPage() {
       });
       const problems: string[] = [];
       if (photo) await uploadWorkerPhoto(active.company_id, id, photo).catch(() => problems.push("photo"));
-      if (doc) await uploadAadhaarDoc(active.company_id, id, doc).catch(() => problems.push("Aadhaar copy"));
+      if (docs.front) await uploadAadhaarDoc(active.company_id, id, docs.front, "Front").catch(() => problems.push("Aadhaar front copy"));
+      if (docs.back) await uploadAadhaarDoc(active.company_id, id, docs.back, "Back").catch(() => problems.push("Aadhaar back copy"));
       await qc.invalidateQueries({ queryKey: ["workers", active.company_id] });
       await qc.invalidateQueries({ queryKey: ["agreements", active.company_id] });
       await qc.invalidateQueries({ queryKey: ["reports"] });
@@ -154,7 +155,7 @@ function NewWorkerPage() {
               {t("Stored encrypted. Staff see only the last 4 digits; only the owner can view the full number.")}
             </div>
             <Field label="Aadhaar copy (optional)" asDiv>
-              <AadhaarCopyPicker file={doc} onChange={setDoc} />
+              <AadhaarCopyPicker value={docs} onChange={setDocs} />
             </Field>
           </div>
         )}
@@ -172,9 +173,18 @@ function NewWorkerPage() {
             <div className="rounded-lg bg-muted p-4 text-sm">
               <div className="font-semibold">{personal.full_name}</div>
               <div className="text-muted-foreground">{personal.mobile} · Aadhaar XXXX XXXX {aadhaar.slice(-4)}</div>
-              {doc && (
-                <div className="mt-2 text-xs text-muted-foreground">
-                  {t("Aadhaar copy attached")}: <span className="font-medium text-foreground">{doc.name}</span>
+              {(docs.front || docs.back) && (
+                <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                  {docs.front && (
+                    <div>
+                      {t("Aadhaar front attached")}: <span className="font-medium text-foreground">{docs.front.name}</span>
+                    </div>
+                  )}
+                  {docs.back && (
+                    <div>
+                      {t("Aadhaar back attached")}: <span className="font-medium text-foreground">{docs.back.name}</span>
+                    </div>
+                  )}
                 </div>
               )}
               {rupeesToPaise(rate) && (

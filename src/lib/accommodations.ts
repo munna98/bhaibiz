@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { capitalizeWords } from "./utils";
 
 export type Accommodation = Database["public"]["Tables"]["accommodations"]["Row"];
 export type OperatorAccommodation = Database["public"]["Tables"]["operator_accommodations"]["Row"];
@@ -45,7 +46,7 @@ export async function createAccommodation(params: {
     .from("accommodations")
     .insert({
       company_id: params.companyId,
-      name: params.name.trim(),
+      name: capitalizeWords(params.name.trim()),
       address: params.address?.trim() || null,
     })
     .select("id, company_id, name, address, created_at, updated_at")
@@ -62,7 +63,7 @@ export async function updateAccommodation(params: {
   const { data, error } = await supabase
     .from("accommodations")
     .update({
-      name: params.name.trim(),
+      name: capitalizeWords(params.name.trim()),
       address: params.address?.trim() || null,
     })
     .eq("id", params.id)

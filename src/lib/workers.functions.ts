@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { formatAadhaar, normalizeAadhaar, validateAadhaar } from "./aadhaar";
 import { decryptAadhaar, encryptAadhaar, hashAadhaar } from "./aadhaar-crypto";
+import { capitalizeWords } from "./utils";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date");
 const opt = (max: number) => z.string().trim().max(max).optional().default("");
@@ -50,9 +51,14 @@ export const createWorker = createServerFn({ method: "POST" })
     if (invalid) throw new Error(invalid);
     const key = aadhaarKey();
     const [hash, cipher] = await Promise.all([hashAadhaar(num, key), encryptAadhaar(num, key)]);
+    const workerPayload = {
+      ...data.worker,
+      full_name: capitalizeWords(data.worker.full_name.trim()),
+      emergency_name: data.worker.emergency_name ? capitalizeWords(data.worker.emergency_name.trim()) : "",
+    };
     const { data: id, error } = await context.supabase.rpc("create_worker", {
       _company: data.companyId,
-      _w: data.worker,
+      _w: workerPayload,
       _aadhaar_last4: num.slice(-4),
       _aadhaar_hash: hash,
       _aadhaar_cipher: cipher,

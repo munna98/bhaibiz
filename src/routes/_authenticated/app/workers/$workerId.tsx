@@ -4,7 +4,7 @@ import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-quer
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Camera, Eye, FileText, FileUp, Pencil, Phone } from "lucide-react";
+import { ArrowLeft, Camera, Eye, FileText, FileUp, Pencil, Phone, ZoomIn } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
 import { accommodationsQuery } from "@/lib/accommodations";
@@ -17,6 +17,7 @@ import { changeAadhaar, revealAadhaar } from "@/lib/workers.functions";
 import { uploadAadhaarDoc, uploadWorkerPhoto } from "@/lib/worker-uploads";
 import { useActiveMembership } from "../../app";
 import { Field, StatusBadge, WorkerAvatar } from "@/components/workers/WorkerFields";
+import { WorkerPhotoDialog } from "@/components/workers/WorkerPhotoDialog";
 import { AadhaarInput } from "@/components/workers/AadhaarInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -85,6 +86,7 @@ function Profile({ worker }: { worker: Worker }) {
   });
   const photoInput = useRef<HTMLInputElement>(null);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
 
   async function onPhoto(f: File | undefined) {
     if (!f) return;
@@ -105,7 +107,22 @@ function Profile({ worker }: { worker: Worker }) {
       <div className="mt-3 rounded-xl border bg-card p-5 shadow-[var(--shadow-soft)]">
         <div className="flex flex-wrap items-start gap-4">
           <div className="relative">
-            <WorkerAvatar name={worker.full_name} url={photo.data} size="lg" />
+            {photo.data ? (
+              <button
+                type="button"
+                onClick={() => setPhotoOpen(true)}
+                className="group relative block rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-zoom-in"
+                title={t("Click to view full photo")}
+                aria-label={t("View full photo")}
+              >
+                <WorkerAvatar name={worker.full_name} url={photo.data} size="lg" />
+                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30 opacity-0 transition-opacity group-hover:opacity-100">
+                  <ZoomIn className="h-6 w-6 text-white" />
+                </div>
+              </button>
+            ) : (
+              <WorkerAvatar name={worker.full_name} url={photo.data} size="lg" />
+            )}
             {canManageWorkers(role) && (
               <>
                 <Button
@@ -124,7 +141,7 @@ function Profile({ worker }: { worker: Worker }) {
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold">{worker.full_name}</h1>
+              <h1 className="text-2xl font-bold capitalize">{worker.full_name}</h1>
               <StatusBadge status={worker.status} />
             </div>
             <div className="text-sm text-muted-foreground">
@@ -170,6 +187,13 @@ function Profile({ worker }: { worker: Worker }) {
       </Tabs>
 
       <StatusDialog worker={worker} open={statusOpen} onOpenChange={setStatusOpen} />
+      <WorkerPhotoDialog
+        open={photoOpen}
+        onOpenChange={setPhotoOpen}
+        photoUrl={photo.data}
+        workerName={worker.full_name}
+        workerCode={worker.worker_code}
+      />
     </div>
   );
 }
@@ -260,12 +284,14 @@ function Identity({ worker }: { worker: Worker }) {
     if (win) win.location.href = data.signedUrl; else window.location.href = data.signedUrl;
   }
 
-  async function onDoc(f: File | undefined) {
-    if (!f) return;
+  async function onDocs(files: FileList | null | undefined) {
+    if (!files || files.length === 0) return;
     try {
-      await uploadAadhaarDoc(cid, worker.id, f);
+      for (const f of Array.from(files)) {
+        await uploadAadhaarDoc(cid, worker.id, f);
+      }
       await qc.invalidateQueries({ queryKey: ["worker-documents", worker.id] });
-      toast.success(t("Aadhaar copy uploaded"));
+      toast.success(files.length > 1 ? t("Aadhaar copies uploaded") : t("Aadhaar copy uploaded"));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
     }
@@ -292,7 +318,7 @@ function Identity({ worker }: { worker: Worker }) {
           {canManageWorkers(active.role) && (
             <>
               <Button size="sm" variant="outline" onClick={() => docInput.current?.click()}><FileUp className="mr-1 h-3.5 w-3.5" /> {t("Upload")}</Button>
-              <input ref={docInput} type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => onDoc(e.target.files?.[0])} />
+              <input ref={docInput} type="file" accept="image/*" capture="environment" multiple className="sr-only" onChange={(e) => onDocs(e.target.files)} />
             </>
           )}
         </div>
@@ -469,7 +495,7 @@ function StatusDialog({ worker, open, onOpenChange }: { worker: Worker; open: bo
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{toInactive ? `${t("Mark inactive")}: ${worker.full_name}` : `${t("Mark active again")}: ${worker.full_name}`}</DialogTitle>
+          <DialogTitle className="capitalize">{toInactive ? `${t("Mark inactive")}: ${worker.full_name}` : `${t("Mark active again")}: ${worker.full_name}`}</DialogTitle>
           <DialogDescription>
             {toInactive
               ? "They leave the daily attendance list and stop earning commission. Unpaid dues stay on record."

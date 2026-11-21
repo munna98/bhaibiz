@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate, formatINR } from "@/lib/workers";
 import { invalidateMoney, methodLabel, paymentQuery } from "@/lib/money";
+import { capitalizeWords } from "@/lib/utils";
 import { useActiveMembership } from "../../app";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +36,7 @@ function ReceiptPage() {
   const [reason, setReason] = useState("");
   const [voiding, setVoiding] = useState(false);
   const days = [...(p.allocations ?? [])].sort((a, b) => (a.entry?.work_date ?? "").localeCompare(b.entry?.work_date ?? ""));
-  const text = `${p.company?.name}\nReceipt ${p.receipt_no}\nDate: ${formatDate(p.paid_on)}\nWorker: ${p.worker?.full_name} (${p.worker?.worker_code})\nAmount: ${formatINR(p.amount_paise)} by ${methodLabel(p.method)}${p.voided_at ? "\nVOID" : ""}`;
+  const text = `${p.company?.name}\nReceipt ${p.receipt_no}\nDate: ${formatDate(p.paid_on)}\nWorker: ${capitalizeWords(p.worker?.full_name ?? "")} (${p.worker?.worker_code})\nAmount: ${formatINR(p.amount_paise)} by ${methodLabel(p.method)}${p.voided_at ? "\nVOID" : ""}`;
 
   const voidIt = useMutation({
     mutationFn: async () => { const { error } = await supabase.rpc("void_payment", { _payment: p.id, _reason: reason }); if (error) throw error; },
@@ -60,7 +61,7 @@ function ReceiptPage() {
           <span className="font-semibold">{p.receipt_no}</span><span>{formatDate(p.paid_on)}</span>
         </div>
         {p.voided_at && <div className="mt-3 rounded-md bg-destructive/10 p-2 text-center text-sm font-semibold text-destructive">VOID — {p.void_reason}</div>}
-        <div className="mt-4 text-sm">{t("Received from")}<b>{p.worker?.full_name}</b> ({p.worker?.worker_code})</div>
+        <div className="mt-4 text-sm">{t("Received from")} <b className="capitalize">{p.worker?.full_name}</b> ({p.worker?.worker_code})</div>
         <div className="mt-2 text-3xl font-bold">{formatINR(p.amount_paise)}</div>
         <div className="text-sm text-muted-foreground">{methodLabel(p.method)}{p.reference ? ` · ${p.reference}` : ""}</div>
         {days.length > 0 && (

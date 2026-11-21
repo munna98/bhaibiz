@@ -2,13 +2,14 @@ import { useT } from "@/lib/i18n";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, ZoomIn } from "lucide-react";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
 import {
   agreementsQuery, canManageWorkers, formatINR, rateOn, signedPhotoUrls, todayISO, workersQuery,
 } from "@/lib/workers";
 import { useActiveMembership } from "../../app";
 import { StatusBadge, WorkerAvatar } from "@/components/workers/WorkerFields";
+import { WorkerPhotoDialog } from "@/components/workers/WorkerPhotoDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ function WorkersPage() {
   const { data: agreements } = useSuspenseQuery(agreementsQuery(cid));
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("active");
+  const [previewPhoto, setPreviewPhoto] = useState<{ url: string; name: string; code?: string } | null>(null);
   const today = todayISO();
 
   const byWorker = useMemo(() => {
@@ -130,17 +132,48 @@ function WorkersPage() {
         <ul className="mt-4 divide-y overflow-hidden rounded-xl border bg-card">
           {shown.map((w) => {
             const rate = rateOn(byWorker.get(w.id) ?? [], today);
+            const photoUrl = w.photo_path ? photos.data?.[w.photo_path] : null;
             return (
-              <li key={w.id}>
+              <li key={w.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors">
+                {photoUrl ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewPhoto({
+                        url: photoUrl,
+                        name: w.full_name,
+                        code: w.worker_code,
+                      });
+                    }}
+                    className="group relative shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 cursor-zoom-in"
+                    title={t("Click to view full photo")}
+                    aria-label={`${t("View photo of")} ${w.full_name}`}
+                  >
+                    <WorkerAvatar name={w.full_name} url={photoUrl} />
+                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30 opacity-0 transition-opacity group-hover:opacity-100">
+                      <ZoomIn className="h-4 w-4 text-white" />
+                    </div>
+                  </button>
+                ) : (
+                  <Link
+                    to="/app/workers/$workerId"
+                    params={{ workerId: w.id }}
+                    tabIndex={-1}
+                    className="shrink-0 rounded-full focus:outline-none"
+                    aria-hidden="true"
+                  >
+                    <WorkerAvatar name={w.full_name} url={null} />
+                  </Link>
+                )}
                 <Link
                   to="/app/workers/$workerId"
                   params={{ workerId: w.id }}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50"
+                  className="flex min-w-0 flex-1 items-center justify-between gap-3 focus:outline-none"
                 >
-                  <WorkerAvatar name={w.full_name} url={w.photo_path ? photos.data?.[w.photo_path] : null} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="truncate font-medium">{w.full_name}</span>
+                      <span className="truncate font-medium capitalize">{w.full_name}</span>
                       {w.status === "inactive" && <StatusBadge status="inactive" />}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
@@ -157,6 +190,14 @@ function WorkersPage() {
           })}
         </ul>
       )}
+
+      <WorkerPhotoDialog
+        open={!!previewPhoto}
+        onOpenChange={(open) => !open && setPreviewPhoto(null)}
+        photoUrl={previewPhoto?.url}
+        workerName={previewPhoto?.name ?? ""}
+        workerCode={previewPhoto?.code}
+      />
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
 } from "@/lib/accommodations";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useActiveMembership } from "../app";
+import { capitalizeWords } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -133,7 +134,7 @@ function TeamPage() {
   async function handleAddMember(e: React.FormEvent) {
     e.preventDefault();
     const cleanUsername = username.trim().toLowerCase();
-    const cleanName = fullName.trim();
+    const cleanName = capitalizeWords(fullName.trim());
     const cleanPass = password.trim();
 
     if (!cleanName) {
@@ -294,7 +295,8 @@ function TeamPage() {
               id="memberName"
               placeholder="e.g. Kiran Kumar"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => setFullName(capitalizeWords(e.target.value))}
+              autoCapitalize="words"
               required
             />
           </div>
@@ -371,7 +373,7 @@ function TeamPage() {
                           else setSelectedAccs((prev) => prev.filter((id) => id !== acc.id));
                         }}
                       />
-                      <span>{acc.name}</span>
+                      <span className="capitalize">{acc.name}</span>
                     </label>
                   );
                 })}
@@ -413,7 +415,7 @@ function TeamPage() {
             return (
               <li key={m.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{displayName}</div>
+                  <div className="truncate font-medium capitalize">{displayName}</div>
                   {subtitle && (
                     <div className="truncate text-xs text-muted-foreground">{subtitle}</div>
                   )}
@@ -426,7 +428,7 @@ function TeamPage() {
                             className="inline-flex items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary"
                           >
                             <Building2 className="h-3 w-3" />
-                            {a.name}
+                            <span className="capitalize">{a.name}</span>
                           </span>
                         ))
                       ) : (
@@ -533,7 +535,7 @@ function TeamPage() {
             <div className="space-y-3 rounded-lg border bg-muted/40 p-4 font-mono text-sm">
               <div className="flex justify-between py-1 border-b">
                 <span className="text-muted-foreground">{t("Name")}:</span>
-                <span className="font-semibold text-foreground">{createdCreds.fullName}</span>
+                <span className="font-semibold text-foreground capitalize">{createdCreds.fullName}</span>
               </div>
               <div className="flex justify-between py-1 border-b">
                 <span className="text-muted-foreground">{t("Username")}:</span>
@@ -579,7 +581,7 @@ function TeamPage() {
             <DialogHeader>
               <DialogTitle>{t("Reset staff password")}</DialogTitle>
               <DialogDescription>
-                Set a new password for <strong>{resetTarget?.name}</strong>.
+                Set a new password for <strong className="capitalize">{resetTarget?.name}</strong>.
               </DialogDescription>
             </DialogHeader>
 
@@ -628,7 +630,7 @@ function TeamPage() {
               {t("Assign accommodations")}
             </DialogTitle>
             <DialogDescription>
-              {t("Select accommodations for")} <strong>{editAccTarget?.name}</strong>. {t("Operators can only view and manage attendance & collections for their assigned workers.")}
+              {t("Select accommodations for")} <strong className="capitalize">{editAccTarget?.name}</strong>. {t("Operators can only view and manage attendance & collections for their assigned workers.")}
             </DialogDescription>
           </DialogHeader>
 
@@ -654,7 +656,7 @@ function TeamPage() {
                         }}
                       />
                       <div className="flex-1">
-                        <div className="font-medium text-foreground">{acc.name}</div>
+                        <div className="font-medium text-foreground capitalize">{acc.name}</div>
                         {acc.address && <div className="text-xs text-muted-foreground">{acc.address}</div>}
                       </div>
                     </label>

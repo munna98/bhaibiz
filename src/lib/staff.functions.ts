@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import type { Database } from "@/integrations/supabase/types";
+import { capitalizeWords } from "./utils";
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -58,13 +59,14 @@ export const createStaffMember = createServerFn({ method: "POST" })
     }
 
     // 3. Create the user in Supabase Auth with synthetic internal email and pre-confirmed status
+    const cleanFullName = capitalizeWords(data.fullName.trim());
     const internalEmail = `${data.username}@staff.bhaibiz.internal`;
     const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: internalEmail,
       password: data.password,
       email_confirm: true,
       user_metadata: {
-        full_name: data.fullName,
+        full_name: cleanFullName,
         username: data.username,
       },
     });
@@ -102,7 +104,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
         .from("profiles")
         .upsert({
           id: newUserId,
-          full_name: data.fullName,
+          full_name: cleanFullName,
           email: internalEmail,
           username: data.username,
         });
@@ -111,7 +113,7 @@ export const createStaffMember = createServerFn({ method: "POST" })
         ok: true,
         userId: newUserId,
         username: data.username,
-        fullName: data.fullName,
+        fullName: cleanFullName,
         role: data.role,
       };
     } catch (err) {

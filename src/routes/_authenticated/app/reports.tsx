@@ -557,7 +557,7 @@ function ReportContent() {
               <SelectTrigger aria-label={t("Worker")}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t("All workers")}</SelectItem>
-                {data.workers.map((w) => <SelectItem key={w.id} value={w.id}>{w.full_name} · {w.worker_code}</SelectItem>)}
+                {data.workers.map((w) => <SelectItem key={w.id} value={w.id}><span className="capitalize">{w.full_name}</span> · {w.worker_code}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

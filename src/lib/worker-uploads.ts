@@ -27,14 +27,22 @@ export async function uploadWorkerPhoto(companyId: string, workerId: string, fil
   return path;
 }
 
-export async function uploadAadhaarDoc(companyId: string, workerId: string, file: File) {
+export async function uploadAadhaarDoc(
+  companyId: string,
+  workerId: string,
+  file: File,
+  label?: string,
+) {
   if (!file.type.startsWith("image/")) throw new Error("Upload a photo of the Aadhaar card.");
   const body: Blob = await resizeImage(file, 1800, 0.88);
-  const path = `${companyId}/${workerId}/aadhaar/${Date.now()}.jpg`;
+  const suffix = label ? `_${label.toLowerCase().replace(/[^a-z0-9]/g, "")}` : "";
+  const random = Math.random().toString(36).slice(2, 7);
+  const path = `${companyId}/${workerId}/aadhaar/${Date.now()}${suffix}_${random}.jpg`;
   const up = await supabase.storage.from(BUCKET).upload(path, body, { contentType: "image/jpeg" });
   if (up.error) throw up.error;
+  const fileName = label ? `Aadhaar ${label} (${file.name})` : file.name;
   const { error } = await supabase
     .from("worker_documents")
-    .insert({ company_id: companyId, worker_id: workerId, storage_path: path, file_name: file.name });
+    .insert({ company_id: companyId, worker_id: workerId, storage_path: path, file_name: fileName });
   if (error) throw error;
 }

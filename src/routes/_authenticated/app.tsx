@@ -279,18 +279,20 @@ function ShellContent({
 
   return (
     <ActiveMembershipContext.Provider value={{ active, all }}>
-      <aside className="app-navigation hidden w-60 flex-col bg-sidebar p-4 text-sidebar-foreground md:flex">
-        <div className="text-xl font-bold text-sidebar-primary font-[family-name:var(--font-display)]">
-          BhaiBiz
-        </div>
-        {companyPicker}
-        {userDisplay && (
-          <div className="text-xs opacity-70 truncate mt-0.5" title={userDisplay}>
-            {userDisplay}
+      <aside className="app-navigation hidden w-60 shrink-0 flex-col bg-sidebar p-4 text-sidebar-foreground md:sticky md:top-0 md:flex md:h-screen md:overflow-y-auto">
+        <div className="shrink-0">
+          <div className="text-xl font-bold text-sidebar-primary font-[family-name:var(--font-display)]">
+            BhaiBiz
           </div>
-        )}
-        <div className="mt-4 text-sidebar-foreground">
-          <LanguageSelect />
+          {companyPicker}
+          {userDisplay && (
+            <div className="text-xs opacity-70 truncate mt-0.5" title={userDisplay}>
+              {userDisplay}
+            </div>
+          )}
+          <div className="mt-4 text-sidebar-foreground">
+            <LanguageSelect />
+          </div>
         </div>
         <nav className="mt-6 flex flex-1 flex-col gap-1">
           {nav
@@ -373,7 +375,7 @@ function ShellContent({
         </nav>
         <Button
           variant="ghost"
-          className="justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          className="shrink-0 justify-start text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
           onClick={onSignOut}
         >
           <LogOut className="mr-2 h-4 w-4" /> {t("Sign out")}

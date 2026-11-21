@@ -410,7 +410,7 @@ function AttendancePage() {
                   size="sm"
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{w.full_name}</div>
+                  <div className="truncate font-medium capitalize">{w.full_name}</div>
                   <div className="text-xs text-muted-foreground">
                     {w.worker_code} · {t(LABEL[m])}
                   </div>
@@ -588,7 +588,7 @@ function AttendancePage() {
 
                     <div className="mt-1.5 w-full min-w-0">
                       <div
-                        className="truncate text-xs font-semibold text-foreground sm:text-sm"
+                        className="truncate text-xs font-semibold text-foreground sm:text-sm capitalize"
                         title={w.full_name}
                       >
                         {w.full_name}
@@ -801,7 +801,7 @@ function QuickCollectSheet({
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>
-            {t("Collect from")} {worker.full_name}
+            {t("Collect from")} <span className="capitalize">{worker.full_name}</span>
           </DialogTitle>
         </DialogHeader>
 

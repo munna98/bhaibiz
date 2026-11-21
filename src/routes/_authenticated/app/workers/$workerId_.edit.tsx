@@ -86,7 +86,7 @@ function EditForm({ worker }: { worker: Worker }) {
   return (
     <div className="mx-auto max-w-2xl">
       <Link to="/app/workers/$workerId" params={{ workerId: worker.id }} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="mr-1 h-4 w-4" /> {worker.full_name}
+        <ArrowLeft className="mr-1 h-4 w-4" /> <span className="capitalize">{worker.full_name}</span>
       </Link>
       <h1 className="mt-2 text-2xl font-bold">{t("Edit details")} {worker.worker_code}</h1>
       <div className="mt-5 rounded-xl border bg-card p-5 shadow-[var(--shadow-soft)]">

@@ -16,6 +16,7 @@ import {
   type Accommodation,
 } from "@/lib/accommodations";
 import { useActiveMembership } from "../app";
+import { capitalizeWords } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,12 +111,13 @@ function AccommodationsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!createName.trim()) return;
+    const cleanName = capitalizeWords(createName.trim());
+    if (!cleanName) return;
     setCreating(true);
     try {
       await createAccommodation({
         companyId: cid,
-        name: createName,
+        name: cleanName,
         address: createAddress,
       });
       await qc.invalidateQueries({ queryKey: ["accommodations", cid] });
@@ -132,12 +134,13 @@ function AccommodationsPage() {
 
   async function handleEdit(e: React.FormEvent) {
     e.preventDefault();
-    if (!editTarget || !editName.trim()) return;
+    const cleanName = capitalizeWords(editName.trim());
+    if (!editTarget || !cleanName) return;
     setEditing(true);
     try {
       await updateAccommodation({
         id: editTarget.id,
-        name: editName,
+        name: cleanName,
         address: editAddress,
       });
       await qc.invalidateQueries({ queryKey: ["accommodations", cid] });
@@ -223,7 +226,7 @@ function AccommodationsPage() {
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                         <Building2 className="h-5 w-5" />
                       </div>
-                      <h2 className="text-base font-semibold text-foreground">{acc.name}</h2>
+                      <h2 className="text-base font-semibold text-foreground capitalize">{acc.name}</h2>
                     </div>
                     {isManager && (
                       <div className="flex items-center gap-1">
@@ -233,7 +236,7 @@ function AccommodationsPage() {
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
                           onClick={() => {
                             setEditTarget(acc);
-                            setEditName(acc.name);
+                            setEditName(capitalizeWords(acc.name));
                             setEditAddress(acc.address ?? "");
                           }}
                         >
@@ -281,7 +284,7 @@ function AccommodationsPage() {
                             key={op.id}
                             className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs text-foreground"
                           >
-                            {op.profile?.full_name || op.profile?.username || "Operator"}
+                            <span className="capitalize">{op.profile?.full_name || op.profile?.username || "Operator"}</span>
                           </span>
                         ))}
                       </div>
@@ -308,7 +311,8 @@ function AccommodationsPage() {
                   id="acc-name"
                   placeholder="e.g. Camp 1, Room 102"
                   value={createName}
-                  onChange={(e) => setCreateName(e.target.value)}
+                  onChange={(e) => setCreateName(capitalizeWords(e.target.value))}
+                  autoCapitalize="words"
                   required
                 />
               </div>
@@ -348,7 +352,8 @@ function AccommodationsPage() {
                 <Input
                   id="edit-acc-name"
                   value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
+                  onChange={(e) => setEditName(capitalizeWords(e.target.value))}
+                  autoCapitalize="words"
                   required
                 />
               </div>
