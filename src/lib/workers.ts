@@ -31,6 +31,15 @@ export function rupeesToPaise(input: string): number | null {
   return paise > 0 ? paise : null;
 }
 
+/** Parses a non-negative rupee amount into paise (e.g. "0" -> 0, "" -> 0, "150" -> 15000). Returns null if invalid or negative. */
+export function nonNegativeRupeesToPaise(input: string): number | null {
+  const s = input.replace(/[₹,\s]/g, "");
+  if (!s) return 0;
+  if (!/^\d+(\.\d{1,2})?$/.test(s)) return null;
+  const paise = Math.round(Number(s) * 100);
+  return paise >= 0 ? paise : null;
+}
+
 /** Normalises an Indian mobile number to 10 digits, or null if it is not a valid mobile. */
 export function normalizeMobile(input: string): string | null {
   let d = input.replace(/\D/g, "");
@@ -54,7 +63,7 @@ export const workersQuery = (companyId: string) =>
     queryFn: async (): Promise<Worker[]> => {
       const { data, error } = await supabase
         .from("workers")
-        .select("id, company_id, worker_code, full_name, mobile, alt_mobile, category, joining_date, native_state, native_address, kerala_address, emergency_name, emergency_phone, notes, photo_path, status, aadhaar_last4, accommodation_id, created_by, created_at, updated_at")
+        .select("id, company_id, worker_code, full_name, mobile, alt_mobile, category, joining_date, native_state, native_address, kerala_address, emergency_name, emergency_phone, notes, photo_path, status, aadhaar_last4, accommodation_id, opening_balance_paise, created_by, created_at, updated_at")
         .eq("company_id", companyId)
         .order("worker_code");
       if (error) throw error;

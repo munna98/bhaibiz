@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { maskAadhaar, validateAadhaar, verhoeffCheckDigit, verhoeffValid } from "@/lib/aadhaar";
 import { decryptAadhaar, encryptAadhaar, hashAadhaar } from "@/lib/aadhaar-crypto";
-import { formatINR, normalizeMobile, rateOn, rupeesToPaise } from "@/lib/workers";
+import { formatINR, nonNegativeRupeesToPaise, normalizeMobile, rateOn, rupeesToPaise } from "@/lib/workers";
 
 const withCheck = (eleven: string) => eleven + verhoeffCheckDigit(eleven);
 const VALID = withCheck("23456789012");
@@ -67,6 +67,15 @@ describe("Money and phone input", () => {
   it("rejects zero or negative rates", () => {
     expect(rupeesToPaise("0")).toBeNull();
     expect(rupeesToPaise("-5")).toBeNull();
+  });
+  it("nonNegativeRupeesToPaise accepts zero and empty as 0 paise, and positive values", () => {
+    expect(nonNegativeRupeesToPaise("")).toBe(0);
+    expect(nonNegativeRupeesToPaise("0")).toBe(0);
+    expect(nonNegativeRupeesToPaise("0.00")).toBe(0);
+    expect(nonNegativeRupeesToPaise("500")).toBe(50000);
+    expect(nonNegativeRupeesToPaise("₹ 1,500.50")).toBe(150050);
+    expect(nonNegativeRupeesToPaise("-10")).toBeNull();
+    expect(nonNegativeRupeesToPaise("abc")).toBeNull();
   });
   it("formats rupees in Indian style", () => {
     expect(formatINR(12345600)).toBe("₹1,23,456");

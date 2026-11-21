@@ -8,7 +8,7 @@ import { ArrowLeft, Camera, ShieldCheck } from "lucide-react";
 import { formatAadhaar, validateAadhaar } from "@/lib/aadhaar";
 import { AadhaarInput } from "@/components/workers/AadhaarInput";
 import { AadhaarCopyPicker, type AadhaarFiles } from "@/components/workers/AadhaarCopyPicker";
-import { canManageWorkers, formatINR, rupeesToPaise } from "@/lib/workers";
+import { canManageWorkers, formatINR, nonNegativeRupeesToPaise, rupeesToPaise } from "@/lib/workers";
 import { createWorker } from "@/lib/workers.functions";
 import { uploadAadhaarDoc, uploadWorkerPhoto } from "@/lib/worker-uploads";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
@@ -58,6 +58,8 @@ function NewWorkerPage() {
   const [rate, setRate] = useState("");
   const [rateFrom, setRateFrom] = useState("");
   const [rateErr, setRateErr] = useState<string | null>(null);
+  const [openingBalance, setOpeningBalance] = useState("");
+  const [openingErr, setOpeningErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (!canManageWorkers(active.role)) {
@@ -85,16 +87,23 @@ function NewWorkerPage() {
     if (!paise) { setRateErr("Enter the daily commission in rupees."); return; }
     if (!rateFrom) { setRateErr("Pick the date this rate starts."); return; }
     setRateErr(null);
+    const openingPaise = nonNegativeRupeesToPaise(openingBalance);
+    if (openingPaise === null) {
+      setOpeningErr("Enter a valid opening balance or 0.");
+      return;
+    }
+    setOpeningErr(null);
     setBusy(true);
     try {
       const { id } = await create({
-        data: { companyId: active.company_id, worker: personal, aadhaar, ratePaise: paise, rateFrom },
+        data: { companyId: active.company_id, worker: personal, aadhaar, ratePaise: paise, rateFrom, openingBalancePaise: openingPaise },
       });
       const problems: string[] = [];
       if (photo) await uploadWorkerPhoto(active.company_id, id, photo).catch(() => problems.push("photo"));
       if (docs.front) await uploadAadhaarDoc(active.company_id, id, docs.front, "Front").catch(() => problems.push("Aadhaar front copy"));
       if (docs.back) await uploadAadhaarDoc(active.company_id, id, docs.back, "Back").catch(() => problems.push("Aadhaar back copy"));
       await qc.invalidateQueries({ queryKey: ["workers", active.company_id] });
+      await qc.invalidateQueries({ queryKey: ["balances", active.company_id] });
       await qc.invalidateQueries({ queryKey: ["agreements", active.company_id] });
       await qc.invalidateQueries({ queryKey: ["reports"] });
       if (problems.length) toast.warning(`Worker saved, but the ${problems.join(" and ")} didn't upload. Try again from their profile.`);
@@ -170,6 +179,20 @@ function NewWorkerPage() {
                 <DateInput value={rateFrom} onChange={(v) => setRateFrom(v)} />
               </Field>
             </div>
+            <Field label="Opening balance owed to business (₹)" error={openingErr ?? undefined}>
+              <Input
+                value={openingBalance}
+                onChange={(e) => {
+                  setOpeningBalance(e.target.value);
+                  if (openingErr) setOpeningErr(null);
+                }}
+                inputMode="decimal"
+                placeholder="0"
+              />
+              <span className="text-xs text-muted-foreground">
+                {t("Any previous balance this worker owes to the business before starting on BhaiBiz.")}
+              </span>
+            </Field>
             <div className="rounded-lg bg-muted p-4 text-sm">
               <div className="font-semibold">{personal.full_name}</div>
               <div className="text-muted-foreground">{personal.mobile} · Aadhaar XXXX XXXX {aadhaar.slice(-4)}</div>
@@ -189,6 +212,11 @@ function NewWorkerPage() {
               )}
               {rupeesToPaise(rate) && (
                 <div className="mt-2">{t("Earns")} <b>{formatINR(rupeesToPaise(rate) ?? 0)}</b> {t("commission for every day marked Worked.")}</div>
+              )}
+              {Boolean(nonNegativeRupeesToPaise(openingBalance)) && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {t("Opening balance owed to business")}: <b className="text-foreground">{formatINR(nonNegativeRupeesToPaise(openingBalance) ?? 0)}</b>
+                </div>
               )}
             </div>
           </div>

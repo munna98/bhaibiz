@@ -6,12 +6,13 @@ import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
-import { canManageWorkers, workersQuery, type Worker } from "@/lib/workers";
+import { canManageWorkers, nonNegativeRupeesToPaise, workersQuery, type Worker } from "@/lib/workers";
 import { useActiveMembership } from "../../app";
 import {
-  checkPersonal, personalFromWorker, WorkerPersonalFields, type PersonalErrors,
+  checkPersonal, Field, personalFromWorker, WorkerPersonalFields, type PersonalErrors,
 } from "@/components/workers/WorkerFields";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/app/workers/$workerId_/edit")({
   head: () => ({
@@ -49,6 +50,10 @@ function EditForm({ worker }: { worker: Worker }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [form, setForm] = useState(() => personalFromWorker(worker));
+  const [openingBalance, setOpeningBalance] = useState(() =>
+    worker.opening_balance_paise ? (worker.opening_balance_paise / 100).toString() : ""
+  );
+  const [openingErr, setOpeningErr] = useState<string | null>(null);
   const [errors, setErrors] = useState<PersonalErrors>({});
   const [busy, setBusy] = useState(false);
 
@@ -56,6 +61,12 @@ function EditForm({ worker }: { worker: Worker }) {
     const { errors: e, value } = checkPersonal(form);
     setErrors(e);
     if (Object.keys(e).length) return;
+    const openingPaise = nonNegativeRupeesToPaise(openingBalance);
+    if (openingPaise === null) {
+      setOpeningErr("Enter a valid opening balance or 0.");
+      return;
+    }
+    setOpeningErr(null);
     setBusy(true);
     const blank = (s: string) => (s.trim() ? s.trim() : null);
     const { error } = await supabase
@@ -73,11 +84,13 @@ function EditForm({ worker }: { worker: Worker }) {
         joining_date: value.joining_date,
         notes: blank(value.notes),
         accommodation_id: value.accommodation_id ?? null,
+        opening_balance_paise: openingPaise,
       })
       .eq("id", worker.id);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     await qc.invalidateQueries({ queryKey: ["workers", worker.company_id] });
+    await qc.invalidateQueries({ queryKey: ["balances", worker.company_id] });
     qc.invalidateQueries({ queryKey: ["reports"] });
     toast.success(t("Saved"));
     navigate({ to: "/app/workers/$workerId", params: { workerId: worker.id } });
@@ -91,6 +104,22 @@ function EditForm({ worker }: { worker: Worker }) {
       <h1 className="mt-2 text-2xl font-bold">{t("Edit details")} {worker.worker_code}</h1>
       <div className="mt-5 rounded-xl border bg-card p-5 shadow-[var(--shadow-soft)]">
         <WorkerPersonalFields value={form} onChange={setForm} errors={errors} companyId={worker.company_id} />
+        <div className="mt-4 border-t pt-4">
+          <Field label="Opening balance owed to business (₹)" error={openingErr ?? undefined}>
+            <Input
+              value={openingBalance}
+              onChange={(e) => {
+                setOpeningBalance(e.target.value);
+                if (openingErr) setOpeningErr(null);
+              }}
+              inputMode="decimal"
+              placeholder="0"
+            />
+            <span className="text-xs text-muted-foreground">
+              {t("Any previous balance this worker owes to the business before starting on BhaiBiz.")}
+            </span>
+          </Field>
+        </div>
         <div className="mt-6 flex justify-end gap-3">
           <Button variant="outline" asChild>
             <Link to="/app/workers/$workerId" params={{ workerId: worker.id }}>{t("Cancel")}</Link>

@@ -29,6 +29,7 @@ const createSchema = z.object({
   aadhaar: z.string().max(20),
   ratePaise: z.number().int().positive().max(10_000_000),
   rateFrom: isoDate,
+  openingBalancePaise: z.number().int().nonnegative().max(100_000_000).optional().default(0),
 });
 
 function friendly(message: string) {
@@ -55,6 +56,7 @@ export const createWorker = createServerFn({ method: "POST" })
       ...data.worker,
       full_name: capitalizeWords(data.worker.full_name.trim()),
       emergency_name: data.worker.emergency_name ? capitalizeWords(data.worker.emergency_name.trim()) : "",
+      opening_balance_paise: data.openingBalancePaise ?? 0,
     };
     const { data: id, error } = await context.supabase.rpc("create_worker", {
       _company: data.companyId,

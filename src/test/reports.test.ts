@@ -15,6 +15,16 @@ describe("report business rules", () => {
     expect(buildReport(data, "outstanding", "2026-11-11", "2026-11-11").total).toBe(15000);
     expect(buildReport(data, "outstanding", "2026-11-11", "2026-11-11").rows).toHaveLength(1);
   });
+  it("outstanding report includes worker opening balance in due calculation", () => {
+    const dataWithOpening: ReportData = {
+      ...data,
+      workers: [
+        { ...data.workers[0]!, opening_balance_paise: 10000 },
+        data.workers[1]!,
+      ],
+    };
+    expect(buildReport(dataWithOpening, "outstanding", "2026-11-11", "2026-11-11").total).toBe(25000);
+  });
   it("all-status report keeps inactive dues collectible", () => { expect(buildReport(data, "outstanding", "2026-11-11", "2026-11-11", "all").total).toBe(105000); });
   it("balances include days before from but exclude payments after as-of date", () => { expect(buildReport(data, "outstanding", "2026-11-10", "2026-11-10").total).toBe(30000); });
   it("collections exclude voided receipts", () => { expect(buildReport(data, "collections", "2026-11-09", "2026-11-11").total).toBe(10000); });

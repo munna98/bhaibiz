@@ -25,11 +25,12 @@ export function validMoneyDate(date: string, today: string): boolean {
     && Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
 }
 
-export type Balance = { worker_id: string; status: string; earned: number; collected: number; adjusted: number; outstanding: number; advance: number };
+export type Balance = { worker_id: string; status: string; opening_balance: number; earned: number; collected: number; adjusted: number; outstanding: number; advance: number };
 
-export function toBalance(r: { worker_id: string | null; status: string | null; earned_paise: number | null; collected_paise: number | null; adjusted_paise: number | null; advance_balance_paise: number | null }): Balance {
+export function toBalance(r: { worker_id: string | null; status: string | null; opening_balance_paise?: number | null; earned_paise: number | null; collected_paise: number | null; adjusted_paise: number | null; advance_balance_paise: number | null }): Balance {
+  const opening_balance = Number(r.opening_balance_paise ?? 0);
   const earned = Number(r.earned_paise ?? 0), collected = Number(r.collected_paise ?? 0), adjusted = Number(r.adjusted_paise ?? 0);
-  return { worker_id: r.worker_id ?? "", status: r.status ?? "active", earned, collected, adjusted, outstanding: earned - collected - adjusted, advance: Number(r.advance_balance_paise ?? 0) };
+  return { worker_id: r.worker_id ?? "", status: r.status ?? "active", opening_balance, earned, collected, adjusted, outstanding: opening_balance + earned - collected - adjusted, advance: Number(r.advance_balance_paise ?? 0) };
 }
 
 /** Dashboard total: outstanding of active workers only. */

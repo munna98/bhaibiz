@@ -987,6 +987,7 @@ export type Database = {
           native_address: string | null
           native_state: string | null
           notes: string | null
+          opening_balance_paise: number
           photo_path: string | null
           status: Database["public"]["Enums"]["worker_status"]
           updated_at: string
@@ -1011,6 +1012,7 @@ export type Database = {
           native_address?: string | null
           native_state?: string | null
           notes?: string | null
+          opening_balance_paise?: number
           photo_path?: string | null
           status?: Database["public"]["Enums"]["worker_status"]
           updated_at?: string
@@ -1035,6 +1037,7 @@ export type Database = {
           native_address?: string | null
           native_state?: string | null
           notes?: string | null
+          opening_balance_paise?: number
           photo_path?: string | null
           status?: Database["public"]["Enums"]["worker_status"]
           updated_at?: string
@@ -1059,6 +1062,7 @@ export type Database = {
           collected_paise: number | null
           company_id: string | null
           earned_paise: number | null
+          opening_balance_paise: number | null
           status: Database["public"]["Enums"]["worker_status"] | null
           worker_id: string | null
         }
@@ -1068,6 +1072,7 @@ export type Database = {
           collected_paise?: never
           company_id?: string | null
           earned_paise?: never
+          opening_balance_paise?: never
           status?: Database["public"]["Enums"]["worker_status"] | null
           worker_id?: string | null
         }
@@ -1077,6 +1082,7 @@ export type Database = {
           collected_paise?: never
           company_id?: string | null
           earned_paise?: never
+          opening_balance_paise?: never
           status?: Database["public"]["Enums"]["worker_status"] | null
           worker_id?: string | null
         }

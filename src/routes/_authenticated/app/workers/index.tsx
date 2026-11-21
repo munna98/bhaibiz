@@ -7,11 +7,13 @@ import { myMembershipsQuery, pickActive } from "@/lib/company";
 import {
   agreementsQuery, canManageWorkers, formatINR, rateOn, signedPhotoUrls, todayISO, workersQuery,
 } from "@/lib/workers";
+import { accommodationsQuery } from "@/lib/accommodations";
 import { useActiveMembership } from "../../app";
 import { StatusBadge, WorkerAvatar } from "@/components/workers/WorkerFields";
 import { WorkerPhotoDialog } from "@/components/workers/WorkerPhotoDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/app/workers/")({
@@ -32,6 +34,7 @@ export const Route = createFileRoute("/_authenticated/app/workers/")({
     await Promise.all([
       context.queryClient.ensureQueryData(workersQuery(active.company_id)),
       context.queryClient.ensureQueryData(agreementsQuery(active.company_id)),
+      context.queryClient.ensureQueryData(accommodationsQuery(active.company_id)),
     ]);
   },
   component: WorkersPage,
@@ -45,8 +48,10 @@ function WorkersPage() {
   const cid = active.company_id;
   const { data: workers } = useSuspenseQuery(workersQuery(cid));
   const { data: agreements } = useSuspenseQuery(agreementsQuery(cid));
+  const { data: accommodations = [] } = useQuery(accommodationsQuery(cid));
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("active");
+  const [accFilter, setAccFilter] = useState<string>("all");
   const [previewPhoto, setPreviewPhoto] = useState<{ url: string; name: string; code?: string } | null>(null);
   const today = todayISO();
 
@@ -56,25 +61,38 @@ function WorkersPage() {
     return m;
   }, [agreements]);
 
+  const accMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const a of accommodations) m.set(a.id, a.name);
+    return m;
+  }, [accommodations]);
+
+  const accFilteredWorkers = useMemo(() => {
+    if (accFilter === "all") return workers;
+    if (accFilter === "none") return workers.filter((w) => !w.accommodation_id);
+    return workers.filter((w) => w.accommodation_id === accFilter);
+  }, [workers, accFilter]);
+
   const counts = {
-    active: workers.filter((w) => w.status === "active").length,
-    inactive: workers.filter((w) => w.status === "inactive").length,
-    all: workers.length,
+    active: accFilteredWorkers.filter((w) => w.status === "active").length,
+    inactive: accFilteredWorkers.filter((w) => w.status === "inactive").length,
+    all: accFilteredWorkers.length,
   };
 
   const shown = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return workers.filter((w) => {
+    return accFilteredWorkers.filter((w) => {
       if (filter !== "all" && w.status !== filter) return false;
       if (!s) return true;
       return (
         w.full_name.toLowerCase().includes(s) ||
         w.worker_code.toLowerCase().includes(s) ||
         w.mobile.includes(s.replace(/\s/g, "")) ||
-        w.aadhaar_last4 === s
+        w.aadhaar_last4 === s ||
+        Boolean(w.accommodation_id && accMap.get(w.accommodation_id)?.toLowerCase().includes(s))
       );
     });
-  }, [workers, q, filter]);
+  }, [accFilteredWorkers, q, filter, accMap]);
 
   const paths = workers.map((w) => w.photo_path).filter((p): p is string => !!p);
   const photos = useQuery({
@@ -102,6 +120,24 @@ function WorkersPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input className="pl-9" placeholder={t("Search name, ID, mobile or Aadhaar last 4")} value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
+        {accommodations.length > 0 && (
+          <div className="w-full sm:w-52">
+            <Select value={accFilter} onValueChange={setAccFilter}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t("All accommodations")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("All accommodations")}</SelectItem>
+                <SelectItem value="none">{t("No accommodation")}</SelectItem>
+                {accommodations.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    <span className="capitalize">{a.name}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <div className="flex rounded-lg border bg-card p-1 text-sm">
           {(["active", "inactive", "all"] as const).map((f) => (
             <Button
@@ -133,6 +169,7 @@ function WorkersPage() {
           {shown.map((w) => {
             const rate = rateOn(byWorker.get(w.id) ?? [], today);
             const photoUrl = w.photo_path ? photos.data?.[w.photo_path] : null;
+            const accName = w.accommodation_id ? accMap.get(w.accommodation_id) : null;
             return (
               <li key={w.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors">
                 {photoUrl ? (
@@ -177,7 +214,7 @@ function WorkersPage() {
                       {w.status === "inactive" && <StatusBadge status="inactive" />}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
-                      {w.worker_code} · {w.mobile}{w.category ? ` · ${w.category}` : ""}
+                      {w.worker_code} · {w.mobile}{w.category ? ` · ${w.category}` : ""}{accName ? ` · ${accName}` : ""}
                     </div>
                   </div>
                   <div className="text-right">

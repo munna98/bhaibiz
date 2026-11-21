@@ -20,7 +20,7 @@ export const REPORT_CONFIG_ITEMS: ReportConfigItem[] = [
     badge: "Balances",
     explanation:
       "Calculates the net balance for each worker by subtracting collections and adjustments from total commission earned.",
-    formula: "Commission Earned − Collected Payments ± Adjustments = Net Due",
+    formula: "Opening Balance + Commission Earned − Collected Payments ± Adjustments = Net Due",
     note: "Balances include all history through the selected date. Inactive workers with outstanding balances remain trackable until settled.",
   },
   {
@@ -57,7 +57,7 @@ export const REPORT_CONFIG_ITEMS: ReportConfigItem[] = [
     note: "Advance balances are kept strictly separate from regular daily attendance commission dues.",
   },
 ];
-export type ReportWorker = { id: string; full_name: string; worker_code: string; status: string; joining_date: string };
+export type ReportWorker = { id: string; full_name: string; worker_code: string; status: string; joining_date: string; opening_balance_paise?: number };
 export type ReportData = {
   workers: ReportWorker[];
   attendance: { id: string; worker_id: string; work_date: string; status: string }[];
@@ -121,10 +121,11 @@ export function buildReport(data: ReportData, kind: ReportKind, from: string, to
     moneyColumns = kind === "outstanding" ? [3, 4, 5, 6] : [3, 4, 5];
     for (const w of workers) {
       if (kind === "outstanding") {
+        const opening = w.opening_balance_paise ?? 0;
         const earned = data.commission.filter(c => c.worker_id === w.id && c.work_date <= to).reduce((s, c) => s + c.amount_paise, 0);
         const collected = data.payments.filter(p => p.worker_id === w.id && p.paid_on <= to && !p.voided_at).reduce((s, p) => s + p.amount_paise, 0);
         const adjusted = data.adjustments.filter(a => a.worker_id === w.id && a.on_date <= to).reduce((s, a) => s + (a.kind === "debit" ? -a.amount_paise : a.amount_paise), 0);
-        const amount = earned - collected - adjusted;
+        const amount = opening + earned - collected - adjusted;
         rows.push({ id: w.id, workerId: w.id, cells: [...prefix(w.id), w.status, earned / 100, collected / 100, adjusted / 100, amount / 100], amount: Math.max(0, amount) });
       } else {
         const given = data.advances.filter(a => a.worker_id === w.id && a.given_on <= to).reduce((s, a) => s + a.amount_paise, 0);

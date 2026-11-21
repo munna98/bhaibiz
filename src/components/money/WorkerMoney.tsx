@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { AppRole } from "@/lib/company";
-import { formatDate, formatINR } from "@/lib/workers";
+import { formatDate, formatINR, workersQuery } from "@/lib/workers";
 import { balancesQuery, canAdjust, canHandleMoney, invalidateMoney, ledgerQuery, methodLabel } from "@/lib/money";
 import { AmountForm } from "./AmountForm";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ export function WorkerLedger({ workerId, companyId, role }: { workerId: string; 
   const t = useT();
   const led = useQuery(ledgerQuery(workerId));
   const bal = useQuery(balancesQuery(companyId)).data?.find((b) => b.worker_id === workerId);
+  const worker = useQuery(workersQuery(companyId)).data?.find((w) => w.id === workerId);
   const [open, setOpen] = useState<null | "waiver" | "credit" | "debit">(null);
   const qc = useQueryClient();
   const adj = useMutation({
@@ -30,6 +31,13 @@ export function WorkerLedger({ workerId, companyId, role }: { workerId: string; 
   });
   const d = led.data;
   const rows: Row[] = d ? [
+    ...(worker?.opening_balance_paise ? [{
+      key: `opening-${worker.id}`,
+      date: worker.joining_date,
+      at: worker.created_at,
+      label: "Opening balance owed",
+      amount: worker.opening_balance_paise,
+    }] : []),
     ...d.commission
       .filter((c) => c.kind === "earn" && !("reversed_at" in c && c.reversed_at))
       .map((c) => ({ key: c.id, date: c.work_date, at: c.created_at, label: "Worked — commission", amount: c.amount_paise })),
@@ -37,9 +45,12 @@ export function WorkerLedger({ workerId, companyId, role }: { workerId: string; 
     ...d.adjustments.map((a) => ({ key: a.id, date: a.on_date, at: a.created_at, label: a.kind === "waiver" ? "Waiver" : a.kind === "credit" ? "Credit adjustment" : "Debit adjustment", detail: a.reason, amount: a.kind === "debit" ? a.amount_paise : -a.amount_paise })),
   ].sort((a, b) => b.date.localeCompare(a.date) || b.at.localeCompare(a.at)) : [];
 
+  const openBal = bal?.opening_balance ?? worker?.opening_balance_paise ?? 0;
+
   return (
     <div className="mt-4 space-y-4">
-      <div className="grid grid-cols-3 gap-2 text-center">
+      <div className={cn("grid gap-2 text-center", openBal > 0 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}>
+        {openBal > 0 && <Box label="Opening balance" value={formatINR(openBal)} />}
         <Box label="Earned" value={bal ? formatINR(bal.earned) : "—"} />
         <Box label="Collected" value={bal ? formatINR(bal.collected) : "—"} />
         <Box label="Due" value={bal ? formatINR(Math.max(0, bal.outstanding)) : "—"} strong />

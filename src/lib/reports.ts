@@ -6,7 +6,7 @@ export const reportsQuery = (companyId: string, to: string) => queryOptions({
   queryKey: ["reports", companyId, to],
   queryFn: async (): Promise<ReportData> => {
     const [workers, attendance, commission, payments, adjustments, advances, repayments, history] = await Promise.all([
-      readAllPages((a, b) => supabase.from("workers").select("id, full_name, worker_code, status, joining_date").eq("company_id", companyId).order("id").range(a, b)),
+      readAllPages((a, b) => supabase.from("workers").select("id, full_name, worker_code, status, joining_date, opening_balance_paise").eq("company_id", companyId).order("id").range(a, b)),
       readAllPages((a, b) => supabase.from("attendance").select("id, worker_id, work_date, status").eq("company_id", companyId).lte("work_date", to).order("id").range(a, b)),
       readAllPages((a, b) => supabase.from("commission_entries").select("id, worker_id, work_date, amount_paise").eq("company_id", companyId).lte("work_date", to).order("id").range(a, b)),
       readAllPages((a, b) => supabase.from("payments").select("id, worker_id, paid_on, amount_paise, method, receipt_no, voided_at").eq("company_id", companyId).lte("paid_on", to).order("id").range(a, b)),

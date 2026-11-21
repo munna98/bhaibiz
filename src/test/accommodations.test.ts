@@ -107,4 +107,42 @@ describe("Accommodations & Operator Scoping", () => {
     expect(value.full_name).toBe("Arun Kumar");
     expect(value.emergency_name).toBe("Suresh Babu");
   });
+
+  it("filters workers correctly by accommodation (all, none/unassigned, or specific accommodation id)", () => {
+    const workers = [
+      { id: "w1", full_name: "Arun", status: "active", accommodation_id: "acc-1", worker_code: "BB-001", mobile: "9876543210", aadhaar_last4: "1234" },
+      { id: "w2", full_name: "Biju", status: "active", accommodation_id: "acc-2", worker_code: "BB-002", mobile: "9876543211", aadhaar_last4: "1235" },
+      { id: "w3", full_name: "Chintu", status: "inactive", accommodation_id: "acc-1", worker_code: "BB-003", mobile: "9876543212", aadhaar_last4: "1236" },
+      { id: "w4", full_name: "Deepak", status: "active", accommodation_id: null, worker_code: "BB-004", mobile: "9876543213", aadhaar_last4: "1237" },
+    ];
+
+    const filterWorkers = (accFilter: string, statusFilter: "active" | "inactive" | "all" = "all") => {
+      return workers.filter((w) => {
+        if (statusFilter !== "all" && w.status !== statusFilter) return false;
+        if (accFilter === "all") return true;
+        if (accFilter === "none") return !w.accommodation_id;
+        return w.accommodation_id === accFilter;
+      });
+    };
+
+    // All accommodations
+    expect(filterWorkers("all")).toHaveLength(4);
+    expect(filterWorkers("all", "active")).toHaveLength(3);
+    expect(filterWorkers("all", "inactive")).toHaveLength(1);
+
+    // Specific accommodation "acc-1"
+    const acc1Workers = filterWorkers("acc-1");
+    expect(acc1Workers.map((w) => w.id)).toEqual(["w1", "w3"]);
+    expect(filterWorkers("acc-1", "active").map((w) => w.id)).toEqual(["w1"]);
+    expect(filterWorkers("acc-1", "inactive").map((w) => w.id)).toEqual(["w3"]);
+
+    // Specific accommodation "acc-2"
+    expect(filterWorkers("acc-2").map((w) => w.id)).toEqual(["w2"]);
+
+    // No accommodation / unassigned
+    const unassignedWorkers = filterWorkers("none");
+    expect(unassignedWorkers.map((w) => w.id)).toEqual(["w4"]);
+    expect(filterWorkers("none", "active").map((w) => w.id)).toEqual(["w4"]);
+    expect(filterWorkers("none", "inactive")).toHaveLength(0);
+  });
 });

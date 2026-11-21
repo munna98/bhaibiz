@@ -25,6 +25,12 @@ it("outstanding = earned − collected − waivers/credits", () => {
   expect(toBalance({ worker_id: "w", status: "active", earned_paise: 45000, collected_paise: 30000, adjusted_paise: 5000, advance_balance_paise: 0 }).outstanding).toBe(10000);
 });
 
+it("outstanding includes opening balance owed to business", () => {
+  const b = toBalance({ worker_id: "w", status: "active", opening_balance_paise: 25000, earned_paise: 45000, collected_paise: 30000, adjusted_paise: 5000, advance_balance_paise: 0 });
+  expect(b.opening_balance).toBe(25000);
+  expect(b.outstanding).toBe(35000);
+});
+
 it("dashboard total excludes inactive workers", () => {
   const b = (status: string, earned: number) => toBalance({ worker_id: status, status, earned_paise: earned, collected_paise: 0, adjusted_paise: 0, advance_balance_paise: 0 });
   expect(totalOutstanding([b("active", 20000), b("inactive", 90000)])).toBe(20000);

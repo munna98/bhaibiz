@@ -224,6 +224,7 @@ function Details({ worker }: { worker: Worker }) {
       <Row label="Work type" value={worker.category} />
       <Row label="Emergency contact" value={[worker.emergency_name, worker.emergency_phone].filter(Boolean).join(" · ")} />
       <Row label="Joining date" value={formatDate(worker.joining_date)} />
+      <Row label="Opening balance owed" value={formatINR(worker.opening_balance_paise ?? 0)} />
       <div className="sm:col-span-2"><Row label="Notes" value={worker.notes} /></div>
     </div>
   );
