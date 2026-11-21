@@ -52,22 +52,27 @@ export function computeDayPaymentStatus({
   entryAmount?: number | undefined;
   allocatedAmount?: number | undefined;
 }): DayPaymentStatus {
-  const isAllocated = entryAmount > 0 && allocatedAmount >= entryAmount;
-  const isPartiallyAllocated = entryAmount > 0 && allocatedAmount > 0 && allocatedAmount < entryAmount;
-
-  if (hasPaymentOnDate || (mark === "worked" && isAllocated)) {
+  // 1. Any collection recorded on this date counts as Paid today
+  if (hasPaymentOnDate) {
     return "paid";
   }
 
-  if (mark === "worked" && isPartiallyAllocated && outstanding > 0) {
-    return "partial";
+  // 2. If the worker worked on this date:
+  if (mark === "worked") {
+    // If the day's commission is fully allocated or worker has zero dues:
+    if ((entryAmount > 0 && allocatedAmount >= entryAmount) || outstanding <= 0) {
+      return "paid";
+    }
+    // If partially allocated:
+    if (entryAmount > 0 && allocatedAmount > 0 && allocatedAmount < entryAmount) {
+      return "partial";
+    }
+    // Otherwise, dues generated on this day are unpaid:
+    return "unpaid";
   }
 
-  if (outstanding <= 0) {
-    return "no_dues";
-  }
-
-  return "unpaid";
+  // 3. Not worked or pending: no shift was worked on this date, so no dues for this date
+  return "no_dues";
 }
 
 export const attendanceOnQuery = (companyId: string, date: string) =>

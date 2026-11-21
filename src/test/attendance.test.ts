@@ -83,7 +83,7 @@ describe("computeDayPaymentStatus", () => {
     ).toBe("paid");
   });
 
-  it("returns no_dues when total outstanding is zero and no payment on date", () => {
+  it("returns paid when worked and total outstanding is zero", () => {
     expect(
       computeDayPaymentStatus({
         mark: "worked",
@@ -92,7 +92,7 @@ describe("computeDayPaymentStatus", () => {
         entryAmount: 50000,
         allocatedAmount: 0,
       }),
-    ).toBe("no_dues");
+    ).toBe("paid");
   });
 
   it("returns partial when commission entry is partially allocated", () => {
@@ -119,11 +119,11 @@ describe("computeDayPaymentStatus", () => {
     ).toBe("unpaid");
   });
 
-  it("returns no_dues when not worked and outstanding is zero", () => {
+  it("returns no_dues when not worked even if worker has past outstanding", () => {
     expect(
       computeDayPaymentStatus({
         mark: "not_worked",
-        outstanding: 0,
+        outstanding: 25000,
         hasPaymentOnDate: false,
       }),
     ).toBe("no_dues");
@@ -139,33 +139,13 @@ describe("computeDayPaymentStatus", () => {
     ).toBe("paid");
   });
 
-  it("returns unpaid when not worked but has past outstanding and no payment on date", () => {
-    expect(
-      computeDayPaymentStatus({
-        mark: "not_worked",
-        outstanding: 25000,
-        hasPaymentOnDate: false,
-      }),
-    ).toBe("unpaid");
-  });
-
-  it("returns no_dues when pending and outstanding is zero", () => {
-    expect(
-      computeDayPaymentStatus({
-        mark: "pending",
-        outstanding: 0,
-        hasPaymentOnDate: false,
-      }),
-    ).toBe("no_dues");
-  });
-
-  it("returns unpaid when pending with positive outstanding and no payment on date", () => {
+  it("returns no_dues when pending even if worker has past outstanding", () => {
     expect(
       computeDayPaymentStatus({
         mark: "pending",
         outstanding: 15000,
         hasPaymentOnDate: false,
       }),
-    ).toBe("unpaid");
+    ).toBe("no_dues");
   });
 });
