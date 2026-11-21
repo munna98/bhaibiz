@@ -90,7 +90,7 @@ describe("AadhaarCopyPicker (Front and Back)", () => {
     expect(removeButtons.length).toBe(2);
 
     // Remove front
-    fireEvent.click(removeButtons[0]);
+    fireEvent.click(removeButtons[0]!);
     expect(onChange).toHaveBeenCalledWith({
       front: null,
       back: backFile,

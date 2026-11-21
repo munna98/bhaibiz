@@ -28,7 +28,7 @@ export const ml: Record<string, string> = {
   "Aadhaar copy preview":"ആധാർ പകർപ്പ് പ്രിവ്യൂ",
   "Click to view full photo":"ഫോട്ടോ വലുതായി കാണുക",
   "View full photo":"ഫോട്ടോ വലുതായി കാണുക",
-  "Worker photo":"തൊഴിലാളിയുടെ ഫോട്ടോ",
+  "Download photo":"ഫോട്ടോ ഡൗൺലോഡ് ചെയ്യുക",
   "View photo of":"ഫോട്ടോ കാണുക",
   "Change":"മാറ്റുക",
   "Remove":"നീക്കുക",

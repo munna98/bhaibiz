@@ -18,6 +18,7 @@ import { uploadAadhaarDoc, uploadWorkerPhoto } from "@/lib/worker-uploads";
 import { useActiveMembership } from "../../app";
 import { Field, StatusBadge, WorkerAvatar } from "@/components/workers/WorkerFields";
 import { WorkerPhotoDialog } from "@/components/workers/WorkerPhotoDialog";
+import { AadhaarDocDialog } from "@/components/workers/AadhaarDocDialog";
 import { AadhaarInput } from "@/components/workers/AadhaarInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -242,6 +243,8 @@ function Identity({ worker }: { worker: Worker }) {
   const [newNo, setNewNo] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<{ url: string; fileName?: string | null; uploadedAt?: string } | null>(null);
+  const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
   const docInput = useRef<HTMLInputElement>(null);
 
   async function show() {
@@ -273,15 +276,25 @@ function Identity({ worker }: { worker: Worker }) {
     }
   }
 
-  async function openDoc(path: string) {
-    const win = window.open("", "_blank");
-    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60);
-    if (error || !data) { win?.close(); toast.error("Could not open the document"); return; }
-    const { data: auth } = await supabase.auth.getUser();
-    if (!auth.user) { win?.close(); return; }
-    const { error: auditError } = await supabase.from("audit_log").insert({ company_id: cid, entity: "worker", entity_id: worker.id, action: "aadhaar_doc_viewed", actor_id: auth.user.id });
-    if (auditError) { win?.close(); toast.error(t("Could not open the document")); return; }
-    if (win) win.location.href = data.signedUrl; else window.location.href = data.signedUrl;
+  async function openDoc(doc: { id: string; storage_path: string; file_name: string | null; uploaded_at: string }) {
+    setLoadingDocId(doc.id);
+    try {
+      const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(doc.storage_path, 300);
+      if (error || !data) { toast.error(t("Could not open the document")); return; }
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      const { error: auditError } = await supabase.from("audit_log").insert({ company_id: cid, entity: "worker", entity_id: worker.id, action: "aadhaar_doc_viewed", actor_id: auth.user.id });
+      if (auditError) { toast.error(t("Could not open the document")); return; }
+      setViewingDoc({
+        url: data.signedUrl,
+        fileName: doc.file_name,
+        uploadedAt: doc.uploaded_at,
+      });
+    } catch {
+      toast.error(t("Could not open the document"));
+    } finally {
+      setLoadingDocId(null);
+    }
   }
 
   async function onDocs(files: FileList | null | undefined) {
@@ -326,9 +339,18 @@ function Identity({ worker }: { worker: Worker }) {
           <ul className="mt-3 divide-y">
             {docs.data.map((d) => (
               <li key={d.id} className="flex items-center gap-3 py-2 text-sm">
-                <FileText className="h-4 w-4 text-muted-foreground" />
+                <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="flex-1 truncate">{d.file_name ?? "Aadhaar copy"} · {formatDate(d.uploaded_at)}</span>
-                {owner && <Button size="sm" variant="ghost" onClick={() => openDoc(d.storage_path)}>{t("View")}</Button>}
+                {owner && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={loadingDocId === d.id}
+                    onClick={() => openDoc(d)}
+                  >
+                    {loadingDocId === d.id ? t("Loading…") : t("View")}
+                  </Button>
+                )}
               </li>
             ))}
           </ul>
@@ -364,6 +386,16 @@ function Identity({ worker }: { worker: Worker }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AadhaarDocDialog
+        open={Boolean(viewingDoc)}
+        onOpenChange={(open) => !open && setViewingDoc(null)}
+        url={viewingDoc?.url}
+        fileName={viewingDoc?.fileName}
+        uploadedAt={viewingDoc?.uploadedAt}
+        workerName={worker.full_name}
+        workerCode={worker.worker_code}
+      />
     </div>
   );
 }

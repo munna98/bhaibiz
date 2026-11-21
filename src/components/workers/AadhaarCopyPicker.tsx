@@ -246,7 +246,7 @@ export function AadhaarCopyPicker({
     if (!onChange) return;
 
     if (value !== undefined) {
-      onChange({
+      (onChange as (val: AadhaarFiles) => void)({
         ...currentFiles,
         [side]: newFile,
       });
