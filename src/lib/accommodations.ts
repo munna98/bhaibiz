@@ -12,7 +12,7 @@ export const accommodationsQuery = (companyId: string) =>
     queryFn: async (): Promise<Accommodation[]> => {
       const { data, error } = await supabase
         .from("accommodations")
-        .select("id, company_id, name, address, created_at, updated_at")
+        .select("id, company_id, name, address, monthly_rent_paise, created_at, updated_at")
         .eq("company_id", companyId)
         .order("name");
       if (error) throw error;
@@ -41,6 +41,7 @@ export async function createAccommodation(params: {
   companyId: string;
   name: string;
   address?: string | null;
+  monthlyRentPaise?: number;
 }) {
   const { data, error } = await supabase
     .from("accommodations")
@@ -48,8 +49,9 @@ export async function createAccommodation(params: {
       company_id: params.companyId,
       name: capitalizeWords(params.name.trim()),
       address: params.address?.trim() || null,
+      monthly_rent_paise: params.monthlyRentPaise ?? 0,
     })
-    .select("id, company_id, name, address, created_at, updated_at")
+    .select("id, company_id, name, address, monthly_rent_paise, created_at, updated_at")
     .single();
   if (error) throw error;
   return data;
@@ -59,15 +61,20 @@ export async function updateAccommodation(params: {
   id: string;
   name: string;
   address?: string | null;
+  monthlyRentPaise?: number;
 }) {
+  const updates: Partial<Accommodation> = {
+    name: capitalizeWords(params.name.trim()),
+    address: params.address?.trim() || null,
+  };
+  if (params.monthlyRentPaise !== undefined) {
+    updates.monthly_rent_paise = params.monthlyRentPaise;
+  }
   const { data, error } = await supabase
     .from("accommodations")
-    .update({
-      name: capitalizeWords(params.name.trim()),
-      address: params.address?.trim() || null,
-    })
+    .update(updates)
     .eq("id", params.id)
-    .select("id, company_id, name, address, created_at, updated_at")
+    .select("id, company_id, name, address, monthly_rent_paise, created_at, updated_at")
     .single();
   if (error) throw error;
   return data;

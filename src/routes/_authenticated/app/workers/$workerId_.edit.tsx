@@ -54,6 +54,10 @@ function EditForm({ worker }: { worker: Worker }) {
     worker.opening_balance_paise ? (worker.opening_balance_paise / 100).toString() : ""
   );
   const [openingErr, setOpeningErr] = useState<string | null>(null);
+  const [monthlyRent, setMonthlyRent] = useState(() =>
+    worker.monthly_rent_paise ? (worker.monthly_rent_paise / 100).toString() : ""
+  );
+  const [rentErr, setRentErr] = useState<string | null>(null);
   const [errors, setErrors] = useState<PersonalErrors>({});
   const [busy, setBusy] = useState(false);
 
@@ -67,6 +71,12 @@ function EditForm({ worker }: { worker: Worker }) {
       return;
     }
     setOpeningErr(null);
+    const rentPaise = nonNegativeRupeesToPaise(monthlyRent);
+    if (rentPaise === null) {
+      setRentErr("Enter a valid monthly rent or 0.");
+      return;
+    }
+    setRentErr(null);
     setBusy(true);
     const blank = (s: string) => (s.trim() ? s.trim() : null);
     const { error } = await supabase
@@ -85,12 +95,15 @@ function EditForm({ worker }: { worker: Worker }) {
         notes: blank(value.notes),
         accommodation_id: value.accommodation_id ?? null,
         opening_balance_paise: openingPaise,
+        monthly_rent_paise: rentPaise,
       })
       .eq("id", worker.id);
     setBusy(false);
     if (error) { toast.error(error.message); return; }
     await qc.invalidateQueries({ queryKey: ["workers", worker.company_id] });
     await qc.invalidateQueries({ queryKey: ["balances", worker.company_id] });
+    await qc.invalidateQueries({ queryKey: ["worker-rent", worker.id] });
+    await qc.invalidateQueries({ queryKey: ["worker-rent-balances", worker.company_id] });
     qc.invalidateQueries({ queryKey: ["reports"] });
     toast.success(t("Saved"));
     navigate({ to: "/app/workers/$workerId", params: { workerId: worker.id } });
@@ -104,7 +117,7 @@ function EditForm({ worker }: { worker: Worker }) {
       <h1 className="mt-2 text-2xl font-bold">{t("Edit details")} {worker.worker_code}</h1>
       <div className="mt-5 rounded-xl border bg-card p-5 shadow-[var(--shadow-soft)]">
         <WorkerPersonalFields value={form} onChange={setForm} errors={errors} companyId={worker.company_id} />
-        <div className="mt-4 border-t pt-4">
+        <div className="mt-4 border-t pt-4 space-y-4">
           <Field label="Opening balance owed to business (₹)" error={openingErr ?? undefined}>
             <Input
               value={openingBalance}
@@ -117,6 +130,20 @@ function EditForm({ worker }: { worker: Worker }) {
             />
             <span className="text-xs text-muted-foreground">
               {t("Any previous balance this worker owes to the business before starting on BhaiBiz.")}
+            </span>
+          </Field>
+          <Field label="Monthly room rent (₹)" error={rentErr ?? undefined}>
+            <Input
+              value={monthlyRent}
+              onChange={(e) => {
+                setMonthlyRent(e.target.value);
+                if (rentErr) setRentErr(null);
+              }}
+              inputMode="decimal"
+              placeholder="0"
+            />
+            <span className="text-xs text-muted-foreground">
+              {t("Monthly rent collected from this worker for accommodation (leave blank or 0 if none).")}
             </span>
           </Field>
         </div>

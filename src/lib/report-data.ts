@@ -2,7 +2,7 @@ import type { AppRole } from "./company";
 
 export const canViewReports = (role: AppRole) => role !== "operator";
 export const canViewAudit = (role: AppRole) => role === "owner";
-export type ReportKind = "attendance" | "earned" | "collections" | "outstanding" | "advances";
+export type ReportKind = "attendance" | "earned" | "collections" | "outstanding" | "advances" | "rent";
 
 export type ReportConfigItem = {
   value: ReportKind;
@@ -56,8 +56,17 @@ export const REPORT_CONFIG_ITEMS: ReportConfigItem[] = [
     formula: "Advances Given − Repayments Received = Net Advance Balance",
     note: "Advance balances are kept strictly separate from regular daily attendance commission dues.",
   },
+  {
+    value: "rent",
+    label: "Room rent",
+    badge: "Rent",
+    explanation:
+      "Tracks monthly accommodation rent charged to workers, rent payments collected, and pending rent dues.",
+    formula: "Rent Charged − Rent Collected = Rent Due",
+    note: "Rent is tracked by billing month and kept separate from daily labor commission dues.",
+  },
 ];
-export type ReportWorker = { id: string; full_name: string; worker_code: string; status: string; joining_date: string; opening_balance_paise?: number };
+export type ReportWorker = { id: string; full_name: string; worker_code: string; status: string; joining_date: string; opening_balance_paise?: number; monthly_rent_paise?: number };
 export type ReportData = {
   workers: ReportWorker[];
   attendance: { id: string; worker_id: string; work_date: string; status: string }[];
@@ -67,6 +76,8 @@ export type ReportData = {
   advances: { id: string; worker_id: string; given_on: string; amount_paise: number }[];
   repayments: { id: string; worker_id: string; paid_on: string; amount_paise: number }[];
   history: { id: string; worker_id: string; status: string; effective_date: string; changed_at: string }[];
+  rentCharges?: { id: string; worker_id: string; period: string; amount_paise: number; due_date: string; notes?: string | null }[];
+  rentPayments?: { id: string; worker_id: string; period: string; paid_on: string; amount_paise: number; method: string; receipt_no: string; voided_at: string | null }[];
 };
 export type ReportRow = { id: string; workerId: string; receiptId?: string; cells: (string | number)[]; amount: number };
 export type ReportResult = { headers: string[]; rows: ReportRow[]; total: number; moneyColumns: number[] };
@@ -116,6 +127,32 @@ export function buildReport(data: ReportData, kind: ReportKind, from: string, to
   } else if (kind === "collections") {
     headers = ["Worker ID", "Worker", "Date", "Receipt", "Method", "Collected (₹)"]; moneyColumns = [5];
     for (const p of data.payments) if (byId.has(p.worker_id) && during(p.paid_on) && !p.voided_at) rows.push({ id: p.id, workerId: p.worker_id, receiptId: p.id, cells: [...prefix(p.worker_id), p.paid_on, p.receipt_no, p.method, p.amount_paise / 100], amount: p.amount_paise });
+  } else if (kind === "rent") {
+    headers = ["Worker ID", "Worker", "Status", "Monthly Rent (₹)", "Rent Charged (₹)", "Rent Collected (₹)", "Rent Due (₹)"];
+    moneyColumns = [3, 4, 5, 6];
+    for (const w of workers) {
+      const monthlyRate = w.monthly_rent_paise ?? 0;
+      const charged = (data.rentCharges ?? [])
+        .filter((rc) => rc.worker_id === w.id && (!to || rc.period <= to.slice(0, 7)))
+        .reduce((s, rc) => s + rc.amount_paise, 0);
+      const collected = (data.rentPayments ?? [])
+        .filter((rp) => rp.worker_id === w.id && (!to || rp.paid_on <= to) && !rp.voided_at)
+        .reduce((s, rp) => s + rp.amount_paise, 0);
+      const due = Math.max(0, charged - collected);
+      rows.push({
+        id: w.id,
+        workerId: w.id,
+        cells: [
+          ...prefix(w.id),
+          w.status,
+          monthlyRate / 100,
+          charged / 100,
+          collected / 100,
+          due / 100,
+        ],
+        amount: due,
+      });
+    }
   } else {
     headers = kind === "outstanding" ? ["Worker ID", "Worker", "Status", "Earned (₹)", "Collected (₹)", "Adjustments (₹)", "Due (₹)"] : ["Worker ID", "Worker", "Status", "Given (₹)", "Repaid (₹)", "Advance balance (₹)"];
     moneyColumns = kind === "outstanding" ? [3, 4, 5, 6] : [3, 4, 5];

@@ -31,6 +31,7 @@ import { Route as AuthenticatedAppReceiptsPaymentIdRouteImport } from './routes/
 import { Route as AuthenticatedAppWorkersIndexRouteImport } from './routes/_authenticated/app/workers/index'
 import { Route as AuthenticatedAppWorkersWorkerIdRouteImport } from './routes/_authenticated/app/workers/$workerId'
 import { Route as AuthenticatedAppWorkersNewRouteImport } from './routes/_authenticated/app/workers/new'
+import { Route as AuthenticatedAppReceiptsRentRentPaymentIdRouteImport } from './routes/_authenticated/app/receipts/rent/$rentPaymentId'
 import { Route as AuthenticatedAppWorkersWorkerIdEditRouteImport } from './routes/_authenticated/app/workers/$workerId_.edit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -149,6 +150,12 @@ const AuthenticatedAppWorkersNewRoute =
     path: '/workers/new',
     getParentRoute: () => AuthenticatedAppRoute,
   } as any)
+const AuthenticatedAppReceiptsRentRentPaymentIdRoute =
+  AuthenticatedAppReceiptsRentRentPaymentIdRouteImport.update({
+    id: '/receipts/rent/$rentPaymentId',
+    path: '/receipts/rent/$rentPaymentId',
+    getParentRoute: () => AuthenticatedAppRoute,
+  } as any)
 const AuthenticatedAppWorkersWorkerIdEditRoute =
   AuthenticatedAppWorkersWorkerIdEditRouteImport.update({
     id: '/workers/$workerId_/edit',
@@ -177,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/app/workers/$workerId': typeof AuthenticatedAppWorkersWorkerIdRoute
   '/app/workers/new': typeof AuthenticatedAppWorkersNewRoute
   '/app/workers/': typeof AuthenticatedAppWorkersIndexRoute
+  '/app/receipts/rent/$rentPaymentId': typeof AuthenticatedAppReceiptsRentRentPaymentIdRoute
   '/app/workers/$workerId/edit': typeof AuthenticatedAppWorkersWorkerIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -199,6 +207,7 @@ export interface FileRoutesByTo {
   '/app/workers/$workerId': typeof AuthenticatedAppWorkersWorkerIdRoute
   '/app/workers/new': typeof AuthenticatedAppWorkersNewRoute
   '/app/workers': typeof AuthenticatedAppWorkersIndexRoute
+  '/app/receipts/rent/$rentPaymentId': typeof AuthenticatedAppReceiptsRentRentPaymentIdRoute
   '/app/workers/$workerId/edit': typeof AuthenticatedAppWorkersWorkerIdEditRoute
 }
 export interface FileRoutesById {
@@ -225,6 +234,7 @@ export interface FileRoutesById {
   '/_authenticated/app/workers/$workerId': typeof AuthenticatedAppWorkersWorkerIdRoute
   '/_authenticated/app/workers/new': typeof AuthenticatedAppWorkersNewRoute
   '/_authenticated/app/workers/': typeof AuthenticatedAppWorkersIndexRoute
+  '/_authenticated/app/receipts/rent/$rentPaymentId': typeof AuthenticatedAppReceiptsRentRentPaymentIdRoute
   '/_authenticated/app/workers/$workerId_/edit': typeof AuthenticatedAppWorkersWorkerIdEditRoute
 }
 export interface FileRouteTypes {
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/app/workers/$workerId'
     | '/app/workers/new'
     | '/app/workers/'
+    | '/app/receipts/rent/$rentPaymentId'
     | '/app/workers/$workerId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -272,6 +283,7 @@ export interface FileRouteTypes {
     | '/app/workers/$workerId'
     | '/app/workers/new'
     | '/app/workers'
+    | '/app/receipts/rent/$rentPaymentId'
     | '/app/workers/$workerId/edit'
   id:
     | '__root__'
@@ -297,6 +309,7 @@ export interface FileRouteTypes {
     | '/_authenticated/app/workers/$workerId'
     | '/_authenticated/app/workers/new'
     | '/_authenticated/app/workers/'
+    | '/_authenticated/app/receipts/rent/$rentPaymentId'
     | '/_authenticated/app/workers/$workerId_/edit'
   fileRoutesById: FileRoutesById
 }
@@ -464,6 +477,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppWorkersNewRouteImport
       parentRoute: typeof AuthenticatedAppRoute
     }
+    '/_authenticated/app/receipts/rent/$rentPaymentId': {
+      id: '/_authenticated/app/receipts/rent/$rentPaymentId'
+      path: '/receipts/rent/$rentPaymentId'
+      fullPath: '/app/receipts/rent/$rentPaymentId'
+      preLoaderRoute: typeof AuthenticatedAppReceiptsRentRentPaymentIdRouteImport
+      parentRoute: typeof AuthenticatedAppRoute
+    }
     '/_authenticated/app/workers/$workerId_/edit': {
       id: '/_authenticated/app/workers/$workerId_/edit'
       path: '/workers/$workerId/edit'
@@ -488,6 +508,7 @@ interface AuthenticatedAppRouteChildren {
   AuthenticatedAppWorkersWorkerIdRoute: typeof AuthenticatedAppWorkersWorkerIdRoute
   AuthenticatedAppWorkersNewRoute: typeof AuthenticatedAppWorkersNewRoute
   AuthenticatedAppWorkersIndexRoute: typeof AuthenticatedAppWorkersIndexRoute
+  AuthenticatedAppReceiptsRentRentPaymentIdRoute: typeof AuthenticatedAppReceiptsRentRentPaymentIdRoute
   AuthenticatedAppWorkersWorkerIdEditRoute: typeof AuthenticatedAppWorkersWorkerIdEditRoute
 }
 
@@ -506,6 +527,8 @@ const AuthenticatedAppRouteChildren: AuthenticatedAppRouteChildren = {
   AuthenticatedAppWorkersWorkerIdRoute: AuthenticatedAppWorkersWorkerIdRoute,
   AuthenticatedAppWorkersNewRoute: AuthenticatedAppWorkersNewRoute,
   AuthenticatedAppWorkersIndexRoute: AuthenticatedAppWorkersIndexRoute,
+  AuthenticatedAppReceiptsRentRentPaymentIdRoute:
+    AuthenticatedAppReceiptsRentRentPaymentIdRoute,
   AuthenticatedAppWorkersWorkerIdEditRoute:
     AuthenticatedAppWorkersWorkerIdEditRoute,
 }

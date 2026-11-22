@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { WorkerAdvances, WorkerLedger } from "@/components/money/WorkerMoney";
+import { WorkerRent } from "@/components/rent/WorkerRent";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -174,6 +175,7 @@ function Profile({ worker }: { worker: Worker }) {
         <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="details">{t("Details")}</TabsTrigger>
           <TabsTrigger value="ledger">{t("Ledger")}</TabsTrigger>
+          <TabsTrigger value="rent">{t("Rent")}</TabsTrigger>
           <TabsTrigger value="advances">{t("Advances")}</TabsTrigger>
           <TabsTrigger value="identity">{t("Aadhaar")}</TabsTrigger>
           <TabsTrigger value="rates">{t("Rate history")}</TabsTrigger>
@@ -181,6 +183,7 @@ function Profile({ worker }: { worker: Worker }) {
         </TabsList>
         <TabsContent value="details"><Details worker={worker} /></TabsContent>
         <TabsContent value="ledger"><WorkerLedger workerId={worker.id} companyId={cid} role={active.role} /></TabsContent>
+        <TabsContent value="rent"><WorkerRent workerId={worker.id} companyId={cid} role={active.role} monthlyRentPaise={worker.monthly_rent_paise ?? 0} /></TabsContent>
         <TabsContent value="advances"><WorkerAdvances workerId={worker.id} companyId={cid} role={active.role} /></TabsContent>
         <TabsContent value="identity"><Identity worker={worker} /></TabsContent>
         <TabsContent value="rates"><Rates worker={worker} agreements={agreements} today={today} /></TabsContent>
@@ -225,6 +228,7 @@ function Details({ worker }: { worker: Worker }) {
       <Row label="Emergency contact" value={[worker.emergency_name, worker.emergency_phone].filter(Boolean).join(" · ")} />
       <Row label="Joining date" value={formatDate(worker.joining_date)} />
       <Row label="Opening balance owed" value={formatINR(worker.opening_balance_paise ?? 0)} />
+      <Row label="Monthly room rent" value={worker.monthly_rent_paise ? `${formatINR(worker.monthly_rent_paise)} / ${t("month")}` : t("None")} />
       <div className="sm:col-span-2"><Row label="Notes" value={worker.notes} /></div>
     </div>
   );

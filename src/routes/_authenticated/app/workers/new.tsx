@@ -60,6 +60,8 @@ function NewWorkerPage() {
   const [rateErr, setRateErr] = useState<string | null>(null);
   const [openingBalance, setOpeningBalance] = useState("");
   const [openingErr, setOpeningErr] = useState<string | null>(null);
+  const [monthlyRent, setMonthlyRent] = useState("");
+  const [monthlyRentErr, setMonthlyRentErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (!canManageWorkers(active.role)) {
@@ -93,10 +95,24 @@ function NewWorkerPage() {
       return;
     }
     setOpeningErr(null);
+    const rentPaise = nonNegativeRupeesToPaise(monthlyRent);
+    if (rentPaise === null) {
+      setMonthlyRentErr("Enter a valid monthly rent or 0.");
+      return;
+    }
+    setMonthlyRentErr(null);
     setBusy(true);
     try {
       const { id } = await create({
-        data: { companyId: active.company_id, worker: personal, aadhaar, ratePaise: paise, rateFrom, openingBalancePaise: openingPaise },
+        data: {
+          companyId: active.company_id,
+          worker: personal,
+          aadhaar,
+          ratePaise: paise,
+          rateFrom,
+          openingBalancePaise: openingPaise,
+          monthlyRentPaise: rentPaise,
+        },
       });
       const problems: string[] = [];
       if (photo) await uploadWorkerPhoto(active.company_id, id, photo).catch(() => problems.push("photo"));
@@ -193,6 +209,20 @@ function NewWorkerPage() {
                 {t("Any previous balance this worker owes to the business before starting on BhaiBiz.")}
               </span>
             </Field>
+            <Field label="Monthly room rent (₹)" error={monthlyRentErr ?? undefined}>
+              <Input
+                value={monthlyRent}
+                onChange={(e) => {
+                  setMonthlyRent(e.target.value);
+                  if (monthlyRentErr) setMonthlyRentErr(null);
+                }}
+                inputMode="decimal"
+                placeholder="0"
+              />
+              <span className="text-xs text-muted-foreground">
+                {t("Monthly rent collected from this worker for accommodation (leave blank or 0 if none).")}
+              </span>
+            </Field>
             <div className="rounded-lg bg-muted p-4 text-sm">
               <div className="font-semibold">{personal.full_name}</div>
               <div className="text-muted-foreground">{personal.mobile} · Aadhaar XXXX XXXX {aadhaar.slice(-4)}</div>
@@ -216,6 +246,11 @@ function NewWorkerPage() {
               {Boolean(nonNegativeRupeesToPaise(openingBalance)) && (
                 <div className="mt-2 text-xs text-muted-foreground">
                   {t("Opening balance owed to business")}: <b className="text-foreground">{formatINR(nonNegativeRupeesToPaise(openingBalance) ?? 0)}</b>
+                </div>
+              )}
+              {Boolean(nonNegativeRupeesToPaise(monthlyRent)) && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {t("Monthly rent")}: <b className="text-foreground">{formatINR(nonNegativeRupeesToPaise(monthlyRent) ?? 0)} / {t("month")}</b>
                 </div>
               )}
             </div>

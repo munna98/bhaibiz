@@ -27,6 +27,7 @@ import {
   ShieldAlert,
   ArrowLeft,
   Building2,
+  Home,
 } from "lucide-react";
 import { useEffect, useState, createContext, useContext } from "react";
 import { useServerFn } from "@tanstack/react-start";
@@ -89,6 +90,7 @@ const REPORT_ICONS: Record<ReportKind, typeof Coins> = {
   earned: TrendingUp,
   collections: ReceiptText,
   advances: HandCoins,
+  rent: Home,
 };
 
 export const REPORT_NAV_ITEMS = REPORT_CONFIG_ITEMS.map((item) => ({

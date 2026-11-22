@@ -53,18 +53,46 @@ it("Excel export keeps a formula-like worker name as literal text", () => {
 });
 
 describe("reports configuration and navigation", () => {
-  it("report config items cover all 5 user-friendly report kinds", async () => {
+  it("report config items cover all 6 user-friendly report kinds", async () => {
     const { REPORT_CONFIG_ITEMS } = await import("@/lib/report-data");
 
-    expect(REPORT_CONFIG_ITEMS).toHaveLength(5);
+    expect(REPORT_CONFIG_ITEMS).toHaveLength(6);
     const kinds = REPORT_CONFIG_ITEMS.map((item) => item.value);
-    expect(kinds).toEqual(["outstanding", "attendance", "earned", "collections", "advances"]);
+    expect(kinds).toEqual(["outstanding", "attendance", "earned", "collections", "advances", "rent"]);
 
     REPORT_CONFIG_ITEMS.forEach((cfg) => {
       expect(cfg.label).toBeTruthy();
       expect(cfg.explanation).toBeTruthy();
       expect(cfg.badge).toBeTruthy();
     });
+  });
+
+  it("builds rent report accurately with charges and collections", () => {
+    const rentData = {
+      ...data,
+      rentCharges: [
+        { id: "rc1", worker_id: "a", period: "2026-11", amount_paise: 150000, due_date: "2026-11-01" },
+        { id: "rc2", worker_id: "i", period: "2026-11", amount_paise: 200000, due_date: "2026-11-01" },
+      ],
+      rentPayments: [
+        { id: "rp1", worker_id: "a", period: "2026-11", paid_on: "2026-11-05", amount_paise: 100000, method: "cash", receipt_no: "BB-RNT-001", voided_at: null },
+        { id: "rp2", worker_id: "i", period: "2026-11", paid_on: "2026-11-06", amount_paise: 200000, method: "upi", receipt_no: "BB-RNT-002", voided_at: "2026-11-07" },
+      ],
+    };
+    const report = buildReport(rentData, "rent", "2026-11-01", "2026-11-30", "all");
+    expect(report.headers).toContain("Rent Charged (₹)");
+    expect(report.headers).toContain("Rent Collected (₹)");
+    expect(report.headers).toContain("Rent Due (₹)");
+
+    // Worker 'a': 1500 charged - 1000 collected = 500 due
+    const waRow = report.rows.find((r) => r.workerId === "a");
+    expect(waRow).toBeDefined();
+    expect(waRow?.amount).toBe(50000); // 500 rupees in paise
+
+    // Worker 'i': 2000 charged - 0 collected (voided) = 2000 due
+    const wiRow = report.rows.find((r) => r.workerId === "i");
+    expect(wiRow).toBeDefined();
+    expect(wiRow?.amount).toBe(200000); // 2000 rupees in paise
   });
 
   it("filters workers with pending balances correctly", () => {

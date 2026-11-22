@@ -11,6 +11,7 @@ import {
   TrendingUp,
   ReceiptText,
   HandCoins,
+  Home,
   Filter,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -47,6 +48,7 @@ const REPORT_ICONS: Record<ReportKind, typeof Coins> = {
   earned: TrendingUp,
   collections: ReceiptText,
   advances: HandCoins,
+  rent: Home,
 };
 
 export const REPORT_CONFIG = REPORT_CONFIG_ITEMS.map((item) => ({

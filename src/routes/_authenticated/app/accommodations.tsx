@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Building2, Plus, Pencil, Trash2, Users, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
-import { workersQuery } from "@/lib/workers";
+import { formatINR, nonNegativeRupeesToPaise, workersQuery } from "@/lib/workers";
 import {
   accommodationsQuery,
   createAccommodation,
@@ -97,12 +97,14 @@ function AccommodationsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState("");
   const [createAddress, setCreateAddress] = useState("");
+  const [createRent, setCreateRent] = useState("");
   const [creating, setCreating] = useState(false);
 
   // Edit modal state
   const [editTarget, setEditTarget] = useState<Accommodation | null>(null);
   const [editName, setEditName] = useState("");
   const [editAddress, setEditAddress] = useState("");
+  const [editRent, setEditRent] = useState("");
   const [editing, setEditing] = useState(false);
 
   // Delete modal state
@@ -119,11 +121,13 @@ function AccommodationsPage() {
         companyId: cid,
         name: cleanName,
         address: createAddress,
+        monthlyRentPaise: nonNegativeRupeesToPaise(createRent) ?? 0,
       });
       await qc.invalidateQueries({ queryKey: ["accommodations", cid] });
       toast.success(t("Accommodation created"));
       setCreateName("");
       setCreateAddress("");
+      setCreateRent("");
       setCreateOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create accommodation");
@@ -142,6 +146,7 @@ function AccommodationsPage() {
         id: editTarget.id,
         name: cleanName,
         address: editAddress,
+        monthlyRentPaise: nonNegativeRupeesToPaise(editRent) ?? 0,
       });
       await qc.invalidateQueries({ queryKey: ["accommodations", cid] });
       toast.success(t("Accommodation updated"));
@@ -238,6 +243,7 @@ function AccommodationsPage() {
                             setEditTarget(acc);
                             setEditName(capitalizeWords(acc.name));
                             setEditAddress(acc.address ?? "");
+                            setEditRent(acc.monthly_rent_paise ? (acc.monthly_rent_paise / 100).toString() : "");
                           }}
                         >
                           <Pencil className="h-4 w-4" />
@@ -271,6 +277,11 @@ function AccommodationsPage() {
                         {assignedOps.length} {t("operators")}
                       </span>
                     </Badge>
+                    {acc.monthly_rent_paise > 0 && (
+                      <Badge variant="outline" className="flex items-center gap-1 font-normal">
+                        <span>{formatINR(acc.monthly_rent_paise)} / {t("month")}</span>
+                      </Badge>
+                    )}
                   </div>
 
                   {assignedOps.length > 0 && (
@@ -326,6 +337,19 @@ function AccommodationsPage() {
                   rows={2}
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="acc-rent">{t("Default monthly rent (₹)")}</Label>
+                <Input
+                  id="acc-rent"
+                  placeholder="0"
+                  inputMode="decimal"
+                  value={createRent}
+                  onChange={(e) => setCreateRent(e.target.value)}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {t("Default rent for workers assigned to this accommodation.")}
+                </span>
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
@@ -365,6 +389,19 @@ function AccommodationsPage() {
                   onChange={(e) => setEditAddress(e.target.value)}
                   rows={2}
                 />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-acc-rent">{t("Default monthly rent (₹)")}</Label>
+                <Input
+                  id="edit-acc-rent"
+                  placeholder="0"
+                  inputMode="decimal"
+                  value={editRent}
+                  onChange={(e) => setEditRent(e.target.value)}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {t("Default rent for workers assigned to this accommodation.")}
+                </span>
               </div>
             </div>
             <DialogFooter>

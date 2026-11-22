@@ -20,6 +20,7 @@ export type Database = {
           company_id: string
           created_at: string
           id: string
+          monthly_rent_paise: number
           name: string
           updated_at: string
         }
@@ -28,6 +29,7 @@ export type Database = {
           company_id: string
           created_at?: string
           id?: string
+          monthly_rent_paise?: number
           name: string
           updated_at?: string
         }
@@ -36,6 +38,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           id?: string
+          monthly_rent_paise?: number
           name?: string
           updated_at?: string
         }
@@ -814,6 +817,123 @@ export type Database = {
           },
         ]
       }
+      rent_charges: {
+        Row: {
+          amount_paise: number
+          company_id: string
+          created_at: string
+          created_by: string
+          due_date: string
+          id: string
+          notes: string | null
+          period: string
+          worker_id: string
+        }
+        Insert: {
+          amount_paise: number
+          company_id: string
+          created_at?: string
+          created_by: string
+          due_date: string
+          id?: string
+          notes?: string | null
+          period: string
+          worker_id: string
+        }
+        Update: {
+          amount_paise?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          due_date?: string
+          id?: string
+          notes?: string | null
+          period?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_charges_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rent_charges_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rent_payments: {
+        Row: {
+          amount_paise: number
+          company_id: string
+          created_at: string
+          id: string
+          method: Database["public"]["Enums"]["pay_method"]
+          paid_on: string
+          period: string
+          receipt_no: string
+          recorded_by: string
+          reference: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          worker_id: string
+        }
+        Insert: {
+          amount_paise: number
+          company_id: string
+          created_at?: string
+          id?: string
+          method: Database["public"]["Enums"]["pay_method"]
+          paid_on: string
+          period: string
+          receipt_no: string
+          recorded_by: string
+          reference?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          worker_id: string
+        }
+        Update: {
+          amount_paise?: number
+          company_id?: string
+          created_at?: string
+          id?: string
+          method?: Database["public"]["Enums"]["pay_method"]
+          paid_on?: string
+          period?: string
+          receipt_no?: string
+          recorded_by?: string
+          reference?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rent_payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rent_payments_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_aadhaar: {
         Row: {
           cipher: string
@@ -988,6 +1108,7 @@ export type Database = {
           native_state: string | null
           notes: string | null
           opening_balance_paise: number
+          monthly_rent_paise: number
           photo_path: string | null
           status: Database["public"]["Enums"]["worker_status"]
           updated_at: string
@@ -1013,6 +1134,7 @@ export type Database = {
           native_state?: string | null
           notes?: string | null
           opening_balance_paise?: number
+          monthly_rent_paise?: number
           photo_path?: string | null
           status?: Database["public"]["Enums"]["worker_status"]
           updated_at?: string
@@ -1038,6 +1160,7 @@ export type Database = {
           native_state?: string | null
           notes?: string | null
           opening_balance_paise?: number
+          monthly_rent_paise?: number
           photo_path?: string | null
           status?: Database["public"]["Enums"]["worker_status"]
           updated_at?: string
@@ -1096,6 +1219,44 @@ export type Database = {
           },
         ]
       }
+      worker_rent_balances: {
+        Row: {
+          company_id: string | null
+          monthly_rent_paise: number | null
+          rent_charged_paise: number | null
+          rent_collected_paise: number | null
+          rent_due_paise: number | null
+          status: Database["public"]["Enums"]["worker_status"] | null
+          worker_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          monthly_rent_paise?: number | null
+          rent_charged_paise?: never
+          rent_collected_paise?: never
+          rent_due_paise?: never
+          status?: Database["public"]["Enums"]["worker_status"] | null
+          worker_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          monthly_rent_paise?: number | null
+          rent_charged_paise?: never
+          rent_collected_paise?: never
+          rent_due_paise?: never
+          status?: Database["public"]["Enums"]["worker_status"] | null
+          worker_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_my_invites: { Args: never; Returns: number }
@@ -1119,6 +1280,23 @@ export type Database = {
       }
       can_handle_money: { Args: { _company: string }; Returns: boolean }
       can_manage_workers: { Args: { _company: string }; Returns: boolean }
+      charge_monthly_rent: {
+        Args: {
+          _company: string
+          _period: string
+        }
+        Returns: number
+      }
+      charge_worker_rent: {
+        Args: {
+          _amount: number
+          _due_date?: string
+          _notes?: string
+          _period: string
+          _worker: string
+        }
+        Returns: string
+      }
       create_company: {
         Args: { _address: string; _name: string; _phone: string }
         Returns: string
@@ -1143,6 +1321,24 @@ export type Database = {
           _worker: string
         }
         Returns: string
+      }
+      record_rent_payment: {
+        Args: {
+          _amount: number
+          _method: Database["public"]["Enums"]["pay_method"]
+          _paid_on: string
+          _period: string
+          _reference: string
+          _worker: string
+        }
+        Returns: string
+      }
+      void_rent_payment: {
+        Args: {
+          _payment: string
+          _reason: string
+        }
+        Returns: undefined
       }
       has_role: {
         Args: {
