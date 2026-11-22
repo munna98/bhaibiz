@@ -38,6 +38,142 @@ export function recentPeriods(count = 6): { period: string; label: string }[] {
   return list;
 }
 
+export function workerPeriodsSinceJoining(
+  joiningDate?: string | null,
+  toDate?: string,
+  maxMonths = 60
+): string[] {
+  const curP = currentPeriod(toDate);
+  if (!joiningDate || !/^\d{4}-\d{2}/.test(joiningDate)) {
+    return [curP];
+  }
+  const joinP = joiningDate.slice(0, 7);
+  if (joinP > curP) {
+    return [];
+  }
+  const [curY, curM] = curP.split("-").map(Number);
+  const [joinY, joinM] = joinP.split("-").map(Number);
+
+  const periods: string[] = [];
+  let y = curY;
+  let m = curM;
+  let count = 0;
+
+  while ((y > joinY || (y === joinY && m >= joinM)) && count < maxMonths) {
+    periods.push(`${y}-${String(m).padStart(2, "0")}`);
+    count++;
+    m--;
+    if (m === 0) {
+      m = 12;
+      y--;
+    }
+  }
+  return periods;
+}
+
+export interface WorkerRentMonthBreakdown {
+  period: string;
+  charged: number;
+  paid: number;
+  due: number;
+  dueDate?: string;
+  notes?: string | null;
+  isOverride: boolean;
+}
+
+export function computeWorkerRentBreakdown(params: {
+  joiningDate?: string | null;
+  monthlyRentPaise: number;
+  charges: { period: string; amount_paise: number; due_date?: string; notes?: string | null }[];
+  payments: { period: string; amount_paise: number; voided_at?: string | null }[];
+  toDate?: string;
+}): {
+  breakdown: WorkerRentMonthBreakdown[];
+  totalCharged: number;
+  totalPaid: number;
+  totalDue: number;
+} {
+  const { joiningDate, monthlyRentPaise, charges, payments, toDate } = params;
+  const toPeriod = toDate ? currentPeriod(toDate) : undefined;
+  const activePeriods =
+    monthlyRentPaise > 0 ? workerPeriodsSinceJoining(joiningDate, toDate) : [];
+
+  const allPeriodsSet = new Set<string>(activePeriods);
+  for (const c of charges) {
+    if (!toPeriod || c.period <= toPeriod) {
+      allPeriodsSet.add(c.period);
+    }
+  }
+  for (const p of payments) {
+    if (!p.voided_at && (!toPeriod || p.period <= toPeriod)) {
+      allPeriodsSet.add(p.period);
+    }
+  }
+
+  const chargeByPeriod = new Map<
+    string,
+    { amount_paise: number; due_date?: string; notes?: string | null }
+  >();
+  for (const c of charges) {
+    chargeByPeriod.set(c.period, c);
+  }
+
+  const paidByPeriod = new Map<string, number>();
+  for (const p of payments) {
+    if (p.voided_at) continue;
+    if (toPeriod && p.period > toPeriod) continue;
+    paidByPeriod.set(p.period, (paidByPeriod.get(p.period) ?? 0) + p.amount_paise);
+  }
+
+  const sortedPeriods = Array.from(allPeriodsSet).sort((a, b) => b.localeCompare(a));
+  const breakdown: WorkerRentMonthBreakdown[] = [];
+  let totalCharged = 0;
+  let totalPaid = 0;
+
+  for (const period of sortedPeriods) {
+    let charged = 0;
+    let dueDate: string | undefined;
+    let notes: string | null = null;
+    let isOverride = false;
+
+    if (chargeByPeriod.has(period)) {
+      const c = chargeByPeriod.get(period)!;
+      charged = c.amount_paise;
+      dueDate = c.due_date;
+      notes = c.notes ?? null;
+      isOverride = true;
+    } else if (activePeriods.includes(period)) {
+      charged = Math.max(0, monthlyRentPaise);
+      dueDate = `${period}-01`;
+      notes = null;
+      isOverride = false;
+    }
+
+    const paid = paidByPeriod.get(period) ?? 0;
+    const due = Math.max(0, charged - paid);
+
+    breakdown.push({
+      period,
+      charged,
+      paid,
+      due,
+      dueDate,
+      notes,
+      isOverride,
+    });
+
+    totalCharged += charged;
+    totalPaid += paid;
+  }
+
+  return {
+    breakdown,
+    totalCharged,
+    totalPaid,
+    totalDue: Math.max(0, totalCharged - totalPaid),
+  };
+}
+
 export const workerRentQuery = (workerId: string) =>
   queryOptions({
     queryKey: ["worker-rent", workerId],

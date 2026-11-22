@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Receipt, Wallet, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Plus, Receipt, Wallet, AlertCircle, CheckCircle2, Sliders } from "lucide-react";
 import type { AppRole } from "@/lib/company";
 import { canHandleMoney, canRecordPayment, methodLabel, type PayMethod } from "@/lib/money";
 import { canManageWorkers, formatDate, formatINR, nonNegativeRupeesToPaise, rupeesToPaise } from "@/lib/workers";
@@ -15,6 +15,7 @@ import {
   recordRentPayment,
   chargeWorkerRent,
   invalidateRent,
+  computeWorkerRentBreakdown,
 } from "@/lib/rent";
 import { AmountForm } from "@/components/money/AmountForm";
 import { Button } from "@/components/ui/button";
@@ -43,11 +44,13 @@ export function WorkerRent({
   companyId,
   role,
   monthlyRentPaise,
+  joiningDate,
 }: {
   workerId: string;
   companyId: string;
   role: AppRole;
   monthlyRentPaise: number;
+  joiningDate?: string | null;
 }) {
   const t = useT();
   const qc = useQueryClient();
@@ -69,67 +72,15 @@ export function WorkerRent({
 
   const periods = recentPeriods(12);
 
-  // Group by period
-  const periodSummary = useMemo(() => {
-    const charges = data?.charges ?? [];
-    const payments = data?.payments ?? [];
-    const map = new Map<
-      string,
-      {
-        period: string;
-        charged: number;
-        paid: number;
-        due: number;
-        dueDate?: string;
-        notes?: string | null;
-      }
-    >();
-
-    for (const c of charges) {
-      const cur = map.get(c.period) ?? {
-        period: c.period,
-        charged: 0,
-        paid: 0,
-        due: 0,
-        dueDate: c.due_date,
-        notes: c.notes,
-      };
-      cur.charged += c.amount_paise;
-      map.set(c.period, cur);
-    }
-
-    for (const p of payments) {
-      if (p.voided_at) continue;
-      const cur = map.get(p.period) ?? {
-        period: p.period,
-        charged: 0,
-        paid: 0,
-        due: 0,
-      };
-      cur.paid += p.amount_paise;
-      map.set(p.period, cur);
-    }
-
-    const list = Array.from(map.values()).map((item) => ({
-      ...item,
-      due: Math.max(0, item.charged - item.paid),
-    }));
-
-    return list.sort((a, b) => b.period.localeCompare(a.period));
-  }, [data]);
-
-  const totalCharged = useMemo(
-    () => (data?.charges ?? []).reduce((s, c) => s + c.amount_paise, 0),
-    [data]
-  );
-  const totalPaid = useMemo(
-    () =>
-      (data?.payments ?? [])
-        .filter((p) => !p.voided_at)
-        .reduce((s, p) => s + p.amount_paise, 0),
-    [data]
-  );
-  const totalDue = Math.max(0, totalCharged - totalPaid);
+  // Group by period with automatic accrual
+  const { breakdown: periodSummary, totalCharged, totalPaid, totalDue } = useMemo(() => {
+    return computeWorkerRentBreakdown({
+      joiningDate,
+      monthlyRentPaise,
+      charges: data?.charges ?? [],
+      payments: data?.payments ?? [],
+    });
+  }, [joiningDate, monthlyRentPaise, data]);
 
   const payMutation = useMutation({
     mutationFn: async (v: {
@@ -159,7 +110,7 @@ export function WorkerRent({
   const chargeMutation = useMutation({
     mutationFn: async () => {
       const paise = nonNegativeRupeesToPaise(chargeAmountRupees);
-      if (!paise || paise <= 0) {
+      if (paise === null || paise < 0) {
         throw new Error(t("Enter a valid rent charge amount above 0."));
       }
       return await chargeWorkerRent({
@@ -186,6 +137,20 @@ export function WorkerRent({
     setSelectedPeriod(period);
     setCollectAmount(dueAmount > 0 ? dueAmount : monthlyRentPaise > 0 ? monthlyRentPaise : null);
     setCollectOpen(true);
+  }
+
+  function openAdjustChargeForPeriod(item: {
+    period: string;
+    charged: number;
+    dueDate?: string;
+    notes?: string | null;
+  }) {
+    setChargePeriod(item.period);
+    setChargeAmountRupees((item.charged / 100).toString());
+    setChargeDueDate(item.dueDate || `${item.period}-01`);
+    setChargeNotes(item.notes || "");
+    setChargeErr(null);
+    setChargeOpen(true);
   }
 
   const isOperator = role === "operator";
@@ -237,12 +202,14 @@ export function WorkerRent({
                   monthlyRentPaise > 0 ? (monthlyRentPaise / 100).toString() : ""
                 );
                 setChargeDueDate(`${currentPeriod()}-01`);
+                setChargeNotes("");
+                setChargeErr(null);
                 setChargeOpen(true);
               }}
               className="gap-1.5"
             >
-              <Plus className="h-4 w-4" />
-              {t("Add monthly charge")}
+              <Sliders className="h-4 w-4" />
+              {t("Adjust month rent")}
             </Button>
           )}
         </div>
@@ -272,6 +239,14 @@ export function WorkerRent({
                       <span className="font-semibold text-foreground">
                         {formatPeriod(item.period)}
                       </span>
+                      {item.isOverride && (
+                        <Badge
+                          variant="outline"
+                          className="border-sky-200 bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 text-[10px] py-0 px-1.5"
+                        >
+                          {t("Custom charge")}
+                        </Badge>
+                      )}
                       {isPaid && (
                         <Badge
                           variant="outline"
@@ -309,15 +284,29 @@ export function WorkerRent({
                         {formatINR(item.due)}
                       </div>
                     </div>
-                    {canCollect && item.due > 0 && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => openCollectForPeriod(item.period, item.due)}
-                      >
-                        {t("Collect")}
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {canManage && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => openAdjustChargeForPeriod(item)}
+                          className="h-8 text-xs"
+                        >
+                          {t("Adjust")}
+                        </Button>
+                      )}
+                      {canCollect && (
+                        <Button
+                          size="sm"
+                          variant={item.due > 0 ? "default" : "outline"}
+                          onClick={() => openCollectForPeriod(item.period, item.due)}
+                          className="h-8 text-xs gap-1"
+                        >
+                          <Wallet className="h-3.5 w-3.5" />
+                          {t("Collect")}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -427,7 +416,10 @@ export function WorkerRent({
             }}
           >
             <DialogHeader>
-              <DialogTitle>{t("Add or adjust monthly rent charge")}</DialogTitle>
+              <DialogTitle>{t("Adjust month rent")}</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                {t("Override the automatic rent charge for a specific month (e.g., proration, waiver, or special fee).")}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-1.5">
@@ -489,7 +481,7 @@ export function WorkerRent({
                 {t("Cancel")}
               </Button>
               <Button type="submit" disabled={chargeMutation.isPending || !chargeAmountRupees.trim()}>
-                {chargeMutation.isPending ? t("Saving…") : t("Save charge")}
+                {chargeMutation.isPending ? t("Saving…") : t("Save adjustment")}
               </Button>
             </DialogFooter>
           </form>

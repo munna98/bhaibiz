@@ -1340,6 +1340,12 @@ export type Database = {
         }
         Returns: undefined
       }
+      worker_auto_rent_charged: {
+        Args: {
+          _worker_id: string
+        }
+        Returns: number
+      }
       has_role: {
         Args: {
           _company: string

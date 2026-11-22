@@ -81,14 +81,67 @@ CREATE POLICY "members read rent payments" ON public.rent_payments FOR SELECT TO
     )
   );
 
--- 5. Create worker_rent_balances view
+-- 5. Function to automatically compute rent accrued since joining
+CREATE OR REPLACE FUNCTION public.worker_auto_rent_charged(_worker_id uuid)
+RETURNS bigint LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  w record;
+  m record;
+  total bigint := 0;
+  cur_period text;
+  override_amt integer;
+  now_month date := date_trunc('month', (now() AT TIME ZONE 'Asia/Kolkata')::date);
+  start_month date;
+BEGIN
+  SELECT id, company_id, status, joining_date, coalesce(monthly_rent_paise, 0) as monthly_rent_paise INTO w
+  FROM public.workers WHERE id = _worker_id;
+
+  IF w.id IS NULL THEN RETURN 0; END IF;
+
+  start_month := date_trunc('month', coalesce(w.joining_date, (now() AT TIME ZONE 'Asia/Kolkata')::date));
+  IF start_month > now_month THEN
+    SELECT coalesce(sum(amount_paise), 0) INTO override_amt
+    FROM public.rent_charges WHERE worker_id = _worker_id;
+    RETURN coalesce(override_amt, 0);
+  END IF;
+
+  FOR m IN
+    SELECT generate_series(start_month, now_month, '1 month'::interval)::date AS period_date
+  LOOP
+    cur_period := to_char(m.period_date, 'YYYY-MM');
+    SELECT amount_paise INTO override_amt
+    FROM public.rent_charges
+    WHERE worker_id = _worker_id AND period = cur_period;
+
+    IF override_amt IS NOT NULL THEN
+      total := total + override_amt;
+    ELSIF w.monthly_rent_paise > 0 THEN
+      total := total + w.monthly_rent_paise;
+    END IF;
+  END LOOP;
+
+  -- Also add any explicit overrides for periods outside this window (if any)
+  SELECT coalesce(sum(amount_paise), 0) INTO override_amt
+  FROM public.rent_charges
+  WHERE worker_id = _worker_id
+    AND (period < to_char(start_month, 'YYYY-MM') OR period > to_char(now_month, 'YYYY-MM'));
+
+  total := total + coalesce(override_amt, 0);
+
+  RETURN total;
+END $$;
+
+REVOKE EXECUTE ON FUNCTION public.worker_auto_rent_charged(uuid) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.worker_auto_rent_charged(uuid) TO authenticated;
+
+-- Create worker_rent_balances view using automatic rent accrual
 DROP VIEW IF EXISTS public.worker_rent_balances CASCADE;
 
 CREATE VIEW public.worker_rent_balances WITH (security_invoker = on) AS
 SELECT w.id AS worker_id, w.company_id, w.status, w.monthly_rent_paise,
-  COALESCE((SELECT sum(amount_paise) FROM public.rent_charges rc WHERE rc.worker_id = w.id), 0)::bigint AS rent_charged_paise,
+  public.worker_auto_rent_charged(w.id) AS rent_charged_paise,
   COALESCE((SELECT sum(amount_paise) FROM public.rent_payments rp WHERE rp.worker_id = w.id AND rp.voided_at IS NULL), 0)::bigint AS rent_collected_paise,
-  COALESCE((SELECT sum(amount_paise) FROM public.rent_charges rc WHERE rc.worker_id = w.id), 0)::bigint
+  public.worker_auto_rent_charged(w.id)
     - COALESCE((SELECT sum(amount_paise) FROM public.rent_payments rp WHERE rp.worker_id = w.id AND rp.voided_at IS NULL), 0)::bigint AS rent_due_paise
 FROM public.workers w;
 

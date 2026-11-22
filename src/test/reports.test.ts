@@ -95,6 +95,57 @@ describe("reports configuration and navigation", () => {
     expect(wiRow?.amount).toBe(200000); // 2000 rupees in paise
   });
 
+  it("automatically accrues rent in report based on joining date and monthly_rent_paise setting", () => {
+    const autoRentData: ReportData = {
+      ...data,
+      workers: [
+        {
+          id: "a",
+          full_name: "Active Worker",
+          worker_code: "BB-0001",
+          status: "active",
+          joining_date: "2026-09-01", // joined in Sep -> Sep, Oct, Nov (3 months)
+          monthly_rent_paise: 150000, // ₹1,500/month
+        },
+        {
+          id: "i",
+          full_name: "Inactive Worker",
+          worker_code: "BB-0002",
+          status: "inactive",
+          joining_date: "2026-11-01",
+          monthly_rent_paise: 0, // No rent
+        },
+      ],
+      rentCharges: [], // no manual charges!
+      rentPayments: [
+        {
+          id: "rp1",
+          worker_id: "a",
+          period: "2026-09",
+          paid_on: "2026-09-05",
+          amount_paise: 150000,
+          method: "cash",
+          receipt_no: "BB-RNT-001",
+          voided_at: null,
+        },
+      ],
+    };
+
+    const report = buildReport(autoRentData, "rent", "2026-11-01", "2026-11-30", "all");
+    const waRow = report.rows.find((r) => r.workerId === "a");
+    expect(waRow).toBeDefined();
+    // 3 months * 1500 = 4500 charged, 1500 collected, 3000 due
+    expect(waRow?.cells[4]).toBe(4500); // Charged (₹)
+    expect(waRow?.cells[5]).toBe(1500); // Collected (₹)
+    expect(waRow?.cells[6]).toBe(3000); // Due (₹)
+    expect(waRow?.amount).toBe(300000); // 3000 rupees in paise
+
+    const wiRow = report.rows.find((r) => r.workerId === "i");
+    expect(wiRow).toBeDefined();
+    expect(wiRow?.cells[4]).toBe(0);
+    expect(wiRow?.amount).toBe(0);
+  });
+
   it("filters workers with pending balances correctly", () => {
     const report = buildReport(data, "outstanding", "2026-11-11", "2026-11-11", "all");
     const withBalance = report.rows.filter((r) => Number(r.cells[6]) > 0);

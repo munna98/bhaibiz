@@ -183,7 +183,7 @@ function Profile({ worker }: { worker: Worker }) {
         </TabsList>
         <TabsContent value="details"><Details worker={worker} /></TabsContent>
         <TabsContent value="ledger"><WorkerLedger workerId={worker.id} companyId={cid} role={active.role} /></TabsContent>
-        <TabsContent value="rent"><WorkerRent workerId={worker.id} companyId={cid} role={active.role} monthlyRentPaise={worker.monthly_rent_paise ?? 0} /></TabsContent>
+        <TabsContent value="rent"><WorkerRent workerId={worker.id} companyId={cid} role={active.role} monthlyRentPaise={worker.monthly_rent_paise ?? 0} joiningDate={worker.joining_date} /></TabsContent>
         <TabsContent value="advances"><WorkerAdvances workerId={worker.id} companyId={cid} role={active.role} /></TabsContent>
         <TabsContent value="identity"><Identity worker={worker} /></TabsContent>
         <TabsContent value="rates"><Rates worker={worker} agreements={agreements} today={today} /></TabsContent>

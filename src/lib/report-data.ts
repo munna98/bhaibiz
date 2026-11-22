@@ -1,4 +1,5 @@
 import type { AppRole } from "./company";
+import { computeWorkerRentBreakdown } from "./rent";
 
 export const canViewReports = (role: AppRole) => role !== "operator";
 export const canViewAudit = (role: AppRole) => role === "owner";
@@ -132,13 +133,13 @@ export function buildReport(data: ReportData, kind: ReportKind, from: string, to
     moneyColumns = [3, 4, 5, 6];
     for (const w of workers) {
       const monthlyRate = w.monthly_rent_paise ?? 0;
-      const charged = (data.rentCharges ?? [])
-        .filter((rc) => rc.worker_id === w.id && (!to || rc.period <= to.slice(0, 7)))
-        .reduce((s, rc) => s + rc.amount_paise, 0);
-      const collected = (data.rentPayments ?? [])
-        .filter((rp) => rp.worker_id === w.id && (!to || rp.paid_on <= to) && !rp.voided_at)
-        .reduce((s, rp) => s + rp.amount_paise, 0);
-      const due = Math.max(0, charged - collected);
+      const { totalCharged: charged, totalPaid: collected, totalDue: due } = computeWorkerRentBreakdown({
+        joiningDate: w.joining_date,
+        monthlyRentPaise: monthlyRate,
+        charges: (data.rentCharges ?? []).filter((rc) => rc.worker_id === w.id),
+        payments: (data.rentPayments ?? []).filter((rp) => rp.worker_id === w.id && (!to || rp.paid_on <= to)),
+        toDate: to,
+      });
       rows.push({
         id: w.id,
         workerId: w.id,
