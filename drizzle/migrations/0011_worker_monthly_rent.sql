@@ -36,6 +36,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.rent_charges TO authenticated;
 GRANT ALL ON public.rent_charges TO service_role;
 ALTER TABLE public.rent_charges ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "members read rent charges" ON public.rent_charges;
 CREATE POLICY "members read rent charges" ON public.rent_charges FOR SELECT TO authenticated
   USING (
     public.is_member(company_id) AND (
@@ -44,6 +45,7 @@ CREATE POLICY "members read rent charges" ON public.rent_charges FOR SELECT TO a
     )
   );
 
+DROP POLICY IF EXISTS "managers manage rent charges" ON public.rent_charges;
 CREATE POLICY "managers manage rent charges" ON public.rent_charges FOR ALL TO authenticated
   USING (public.can_manage_workers(company_id))
   WITH CHECK (public.can_manage_workers(company_id));
@@ -73,6 +75,7 @@ GRANT SELECT, INSERT, UPDATE ON public.rent_payments TO authenticated;
 GRANT ALL ON public.rent_payments TO service_role;
 ALTER TABLE public.rent_payments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "members read rent payments" ON public.rent_payments;
 CREATE POLICY "members read rent payments" ON public.rent_payments FOR SELECT TO authenticated
   USING (
     public.is_member(company_id) AND (
