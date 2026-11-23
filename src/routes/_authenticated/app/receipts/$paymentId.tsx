@@ -78,7 +78,10 @@ function ReceiptPage() {
         <Button variant="outline" className="flex-1" onClick={() => window.print()}><Printer className="mr-1 h-4 w-4" /> {t("Print")}</Button>
       </div>
       <div className="mt-3 flex justify-between text-sm print:hidden">
-        <Link to="/app/collect" className="text-primary underline">{t("Collect another")}</Link>
+        <div className="flex gap-4">
+          <Link to="/app/attendance" className="text-primary underline">{t("Back to attendance")}</Link>
+          <Link to="/app/collect" className="text-primary underline">{t("Collect another")}</Link>
+        </div>
         {active.role === "owner" && !p.voided_at && <Button variant="link" className="h-auto p-0 text-destructive" onClick={() => setVoiding(true)}>{t("Void payment")}</Button>}
       </div>
       {voiding && (

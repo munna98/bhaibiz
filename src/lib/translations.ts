@@ -291,4 +291,10 @@ export const ml: Record<string, string> = {
   "Built-in camp quarters, room capacities & operator assignments":"ക്യാമ്പുകളും മുറികളും സൂപ്പർവൈസർമാരുടെ ചുമതലകളും അടങ്ങിയത്",
   "Owner, Manager, Operator & Accountant permissions with audit log":"കൃത്യമായ ചുമതലകളും മാറ്റങ്ങളുടെ പൂർണ്ണ ചരിത്രവും",
   "5 one-click exportable Excel (.xlsx) and print-ready reports":"ഒറ്റ ക്ലിക്കിൽ എക്സലിലേക്ക് മാറ്റാവുന്ന 5 സമഗ്ര റിപ്പോർട്ടുകൾ",
+  "Filtered by":"ഫിൽട്ടർ ചെയ്തത്",
+  "Clear filter":"ഫിൽട്ടർ മാറ്റുക",
+  "Filter by":"ഇതുവഴി ഫിൽട്ടർ ചെയ്യുക",
+  "Show all workers":"എല്ലാ തൊഴിലാളികളെയും കാണിക്കുക",
+  "No workers match the selected filter.":"തിരഞ്ഞെടുത്ത ഫിൽട്ടറിന് അനുയോജ്യമായ തൊഴിലാളികളില്ല.",
+  "Back to attendance":"ഹാജർ പേജിലേക്ക് മടങ്ങുക",
 };

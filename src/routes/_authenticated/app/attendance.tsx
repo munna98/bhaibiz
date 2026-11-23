@@ -79,6 +79,7 @@ import {
 
 const schema = z.object({
   date: fallback(z.string(), "").default(""),
+  accommodation: fallback(z.string(), "").default(""),
 });
 
 export const Route = createFileRoute("/_authenticated/app/attendance")({
@@ -111,12 +112,35 @@ const LABEL: Record<Mark, string> = {
   not_worked: "Not worked",
   pending: "Pending",
 };
+
+type BannerFilter = "all" | "worked" | "not_worked" | "pending" | "earned" | "collected";
+
+const BANNER_FILTER_LABELS: Record<BannerFilter, string> = {
+  all: "All",
+  worked: "Worked",
+  not_worked: "Not worked",
+  pending: "Pending",
+  earned: "Earned",
+  collected: "Collected",
+};
+
 type ViewMode = "list" | "tile";
 const VIEW_STORAGE_KEY = "bhaibiz.attendance-view";
+const ACC_STORAGE_KEY = "bhaibiz.attendance-acc";
 
 function getInitialView(): ViewMode {
   if (typeof window === "undefined") return "tile";
   return window.localStorage.getItem(VIEW_STORAGE_KEY) === "list" ? "list" : "tile";
+}
+
+function getInitialAccFilter(companyId: string, urlParam?: string): string {
+  if (urlParam) return urlParam;
+  if (typeof window === "undefined") return "all";
+  try {
+    return window.localStorage.getItem(`${ACC_STORAGE_KEY}.${companyId}`) || "all";
+  } catch {
+    return "all";
+  }
 }
 
 function AttendancePage() {
@@ -136,7 +160,10 @@ function AttendancePage() {
   }, [search.date, today]);
   const [view, setView] = useState<ViewMode>(getInitialView);
   const [q, setQ] = useState("");
-  const [accFilter, setAccFilter] = useState<string>("all");
+  const [accFilter, setAccFilter] = useState<string>(() =>
+    getInitialAccFilter(cid, search.accommodation),
+  );
+  const [statusFilter, setStatusFilter] = useState<BannerFilter>("all");
   const [ask, setAsk] = useState<{
     workerId: string;
     name: string;
@@ -146,6 +173,17 @@ function AttendancePage() {
   const [bulkTarget, setBulkTarget] = useState<AttendanceStatus | null>(null);
   const [collectFor, setCollectFor] = useState<string | null>(null);
   const qc = useQueryClient();
+
+  useEffect(() => {
+    if (search.accommodation) {
+      setAccFilter(search.accommodation);
+    }
+  }, [search.accommodation]);
+
+  useEffect(() => {
+    const saved = getInitialAccFilter(cid, search.accommodation);
+    setAccFilter(saved);
+  }, [cid, search.accommodation]);
 
   const setViewMode = (mode: ViewMode) => {
     setView(mode);
@@ -163,7 +201,50 @@ function AttendancePage() {
   const balances = useQuery(balancesQuery(cid));
   const coll = useQuery(collectedOnQuery(cid, date));
   const dailyPayments = useQuery(dailyPaymentsQuery(cid, date));
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: Route.fullPath });
+
+  useEffect(() => {
+    if (accs.data && accFilter !== "all") {
+      const exists = accs.data.some((a) => a.id === accFilter);
+      if (!exists) {
+        setAccFilter("all");
+        try {
+          window.localStorage.removeItem(`${ACC_STORAGE_KEY}.${cid}`);
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [accs.data, accFilter, cid]);
+
+  const handleAccFilterChange = (val: string) => {
+    setAccFilter(val);
+    try {
+      if (val === "all") {
+        window.localStorage.removeItem(`${ACC_STORAGE_KEY}.${cid}`);
+      } else {
+        window.localStorage.setItem(`${ACC_STORAGE_KEY}.${cid}`, val);
+      }
+    } catch {
+      // ignore storage errors
+    }
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        accommodation: val === "all" ? "" : val,
+      }),
+      replace: true,
+    });
+  };
+
+  const toggleStatusFilter = (filter: BannerFilter) => {
+    setStatusFilter((prev) => (prev === filter ? "all" : filter));
+  };
+
+  const handleDateChange = (newDate: string) => {
+    setDate(newDate);
+    setStatusFilter("all");
+  };
   const due = useMemo(
     () => Object.fromEntries((balances.data ?? []).map((b) => [b.worker_id, b.outstanding])),
     [balances.data],
@@ -184,6 +265,21 @@ function AttendancePage() {
   const markOf = (id: string): Mark => marks[id] ?? "pending";
   const sum = summarize(list.map((w) => markOf(w.id)));
   const shown = list.filter((w) => {
+    if (statusFilter === "worked" && markOf(w.id) !== "worked") return false;
+    if (statusFilter === "not_worked" && markOf(w.id) !== "not_worked") return false;
+    if (statusFilter === "pending" && markOf(w.id) !== "pending") return false;
+    if (
+      statusFilter === "earned" &&
+      markOf(w.id) !== "worked" &&
+      !(dailyPayments.data?.entriesByWorker[w.id]?.amount ?? 0)
+    )
+      return false;
+    if (
+      statusFilter === "collected" &&
+      !(dailyPayments.data?.paymentsByWorker[w.id]?.totalPaid ?? 0)
+    )
+      return false;
+
     const s = q.trim().toLowerCase();
     return (
       !s ||
@@ -275,22 +371,27 @@ function AttendancePage() {
           variant="outline"
           size="icon"
           aria-label={t("Previous day")}
-          onClick={() => setDate(addDays(date, -1))}
+          onClick={() => handleDateChange(addDays(date, -1))}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <DateInput value={date} max={today} onChange={(v) => v && setDate(v)} className="w-52" />
+        <DateInput
+          value={date}
+          max={today}
+          onChange={(v) => v && handleDateChange(v)}
+          className="w-52"
+        />
         <Button
           variant="outline"
           size="icon"
           aria-label={t("Next day")}
           disabled={date >= today}
-          onClick={() => setDate(addDays(date, 1))}
+          onClick={() => handleDateChange(addDays(date, 1))}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
         {date !== today && (
-          <Button variant="ghost" size="sm" onClick={() => setDate(today)}>
+          <Button variant="ghost" size="sm" onClick={() => handleDateChange(today)}>
             {t("Today")}
           </Button>
         )}
@@ -304,11 +405,44 @@ function AttendancePage() {
       )}
 
       <div className="sticky top-0 z-10 -mx-4 mt-4 grid grid-cols-5 gap-1 border-y bg-background/95 px-4 py-3 text-center backdrop-blur md:mx-0 md:rounded-xl md:border">
-        <Stat label="Worked" value={sum.worked} className="text-primary" />
-        <Stat label="Not worked" value={sum.not_worked} className="text-destructive" />
-        <Stat label="Pending" value={sum.pending} className="text-accent-foreground" />
-        <Stat label="Earned" value={att.data ? formatINR(att.data.earned) : "—"} />
-        <Stat label="Collected" value={coll.data !== undefined ? formatINR(coll.data) : "—"} />
+        <Stat
+          label="Worked"
+          value={sum.worked}
+          className="text-primary"
+          active={statusFilter === "worked"}
+          activeTone="worked"
+          onClick={() => toggleStatusFilter("worked")}
+        />
+        <Stat
+          label="Not worked"
+          value={sum.not_worked}
+          className="text-destructive"
+          active={statusFilter === "not_worked"}
+          activeTone="not_worked"
+          onClick={() => toggleStatusFilter("not_worked")}
+        />
+        <Stat
+          label="Pending"
+          value={sum.pending}
+          className="text-accent-foreground"
+          active={statusFilter === "pending"}
+          activeTone="pending"
+          onClick={() => toggleStatusFilter("pending")}
+        />
+        <Stat
+          label="Earned"
+          value={att.data ? formatINR(att.data.earned) : "—"}
+          active={statusFilter === "earned"}
+          activeTone="earned"
+          onClick={() => toggleStatusFilter("earned")}
+        />
+        <Stat
+          label="Collected"
+          value={coll.data !== undefined ? formatINR(coll.data) : "—"}
+          active={statusFilter === "collected"}
+          activeTone="collected"
+          onClick={() => toggleStatusFilter("collected")}
+        />
       </div>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -323,7 +457,7 @@ function AttendancePage() {
         </div>
         {accs.data && accs.data.length > 0 && (
           <div className="w-full sm:w-52">
-            <Select value={accFilter} onValueChange={setAccFilter}>
+            <Select value={accFilter} onValueChange={handleAccFilterChange}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={t("All accommodations")} />
               </SelectTrigger>
@@ -391,13 +525,43 @@ function AttendancePage() {
         </div>
       </div>
 
+      {statusFilter !== "all" && (
+        <div className="mt-3 flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs text-foreground">
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">{t("Filtered by")}:</span>
+            <span className="font-semibold">{t(BANNER_FILTER_LABELS[statusFilter])}</span>
+            <span className="rounded-full bg-primary/20 px-1.5 py-0.2 text-[10px] font-bold text-primary">
+              {shown.length}
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs text-primary hover:bg-primary/10 hover:text-primary"
+            onClick={() => setStatusFilter("all")}
+          >
+            <X className="mr-1 h-3 w-3" />
+            {t("Clear filter")}
+          </Button>
+        </div>
+      )}
+
       {view === "list" ? (
         <ul className="mt-4 divide-y rounded-xl border bg-card">
           {shown.length === 0 && (
             <li className="p-6 text-center text-sm text-muted-foreground">
-              {workers.length === 0 && role === "operator"
-                ? t("No accommodations or workers assigned yet. Please contact your company owner.")
-                : t("No workers for this date.")}
+              {statusFilter !== "all" ? (
+                <div className="space-y-2">
+                  <p>{t("No workers match the selected filter.")}</p>
+                  <Button variant="outline" size="sm" onClick={() => setStatusFilter("all")}>
+                    {t("Show all workers")}
+                  </Button>
+                </div>
+              ) : workers.length === 0 && role === "operator" ? (
+                t("No accommodations or workers assigned yet. Please contact your company owner.")
+              ) : (
+                t("No workers for this date.")
+              )}
             </li>
           )}
           {shown.map((w) => {
@@ -464,9 +628,18 @@ function AttendancePage() {
         <div className="mt-4">
           {shown.length === 0 ? (
             <div className="rounded-xl border bg-card p-6 text-center text-sm text-muted-foreground">
-              {workers.length === 0 && role === "operator"
-                ? t("No accommodations or workers assigned yet. Please contact your company owner.")
-                : t("No workers for this date.")}
+              {statusFilter !== "all" ? (
+                <div className="space-y-2">
+                  <p>{t("No workers match the selected filter.")}</p>
+                  <Button variant="outline" size="sm" onClick={() => setStatusFilter("all")}>
+                    {t("Show all workers")}
+                  </Button>
+                </div>
+              ) : workers.length === 0 && role === "operator" ? (
+                t("No accommodations or workers assigned yet. Please contact your company owner.")
+              ) : (
+                t("No workers for this date.")
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-2.5 md:grid-cols-5 lg:grid-cols-6">
@@ -693,17 +866,46 @@ function Stat({
   label,
   value,
   className,
+  active = false,
+  activeTone,
+  onClick,
 }: {
   label: string;
   value: string | number;
   className?: string;
+  active?: boolean;
+  activeTone?: "worked" | "not_worked" | "pending" | "earned" | "collected";
+  onClick?: () => void;
 }) {
   const t = useT();
   return (
-    <div>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      title={`${t("Filter by")} ${t(label)}`}
+      className={cn(
+        "group relative flex flex-col items-center justify-center rounded-lg p-1.5 transition-all cursor-pointer select-none",
+        "hover:bg-muted/70 active:scale-[0.97]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        active && "shadow-xs ring-2 ring-offset-1 font-semibold",
+        active && activeTone === "worked" && "bg-primary/15 ring-primary text-primary",
+        active && activeTone === "not_worked" && "bg-destructive/15 ring-destructive text-destructive",
+        active && activeTone === "pending" && "bg-muted ring-foreground/40 text-foreground",
+        active && activeTone === "earned" && "bg-primary/15 ring-primary text-primary",
+        active && activeTone === "collected" && "bg-primary/15 ring-primary text-primary",
+      )}
+    >
       <div className={cn("text-lg font-bold leading-tight", className)}>{value}</div>
-      <div className="text-[11px] text-muted-foreground">{t(label)}</div>
-    </div>
+      <div
+        className={cn(
+          "text-[11px] text-muted-foreground group-hover:text-foreground transition-colors",
+          active && "text-foreground font-semibold",
+        )}
+      >
+        {t(label)}
+      </div>
+    </button>
   );
 }
 
@@ -759,7 +961,7 @@ function QuickCollectSheet({
 }) {
   const t = useT();
   const qc = useQueryClient();
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: Route.fullPath });
   const days = useQuery(unpaidDaysQuery(worker.id));
   const [amount, setAmount] = useState<number | null>(null);
 
