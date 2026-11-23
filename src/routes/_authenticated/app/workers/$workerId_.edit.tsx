@@ -1,12 +1,13 @@
 import { useT } from "@/lib/i18n";
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
-import { canManageWorkers, nonNegativeRupeesToPaise, workersQuery, type Worker } from "@/lib/workers";
+import { canManageWorkers, formatINR, nonNegativeRupeesToPaise, workersQuery, type Worker } from "@/lib/workers";
+import { accommodationsQuery } from "@/lib/accommodations";
 import { useActiveMembership } from "../../app";
 import {
   checkPersonal, Field, personalFromWorker, WorkerPersonalFields, type PersonalErrors,
@@ -49,7 +50,9 @@ function EditForm({ worker }: { worker: Worker }) {
   const t = useT();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const accQuery = useQuery(accommodationsQuery(worker.company_id));
   const [form, setForm] = useState(() => personalFromWorker(worker));
+  const currentAcc = accQuery.data?.find((a) => a.id === form.accommodation_id);
   const [openingBalance, setOpeningBalance] = useState(() =>
     worker.opening_balance_paise ? (worker.opening_balance_paise / 100).toString() : ""
   );
@@ -116,7 +119,19 @@ function EditForm({ worker }: { worker: Worker }) {
       </Link>
       <h1 className="mt-2 text-2xl font-bold">{t("Edit details")} {worker.worker_code}</h1>
       <div className="mt-5 rounded-xl border bg-card p-5 shadow-[var(--shadow-soft)]">
-        <WorkerPersonalFields value={form} onChange={setForm} errors={errors} companyId={worker.company_id} />
+        <WorkerPersonalFields
+          value={form}
+          onChange={setForm}
+          errors={errors}
+          companyId={worker.company_id}
+          onAccommodationChange={(acc) => {
+            if (acc && acc.monthly_rent_paise > 0) {
+              setMonthlyRent((acc.monthly_rent_paise / 100).toString());
+            } else if (!acc) {
+              setMonthlyRent("");
+            }
+          }}
+        />
         <div className="mt-4 border-t pt-4 space-y-4">
           <Field label="Opening balance owed to business (₹)" error={openingErr ?? undefined}>
             <Input
@@ -133,18 +148,31 @@ function EditForm({ worker }: { worker: Worker }) {
             </span>
           </Field>
           <Field label="Monthly room rent (₹)" error={rentErr ?? undefined}>
-            <Input
-              value={monthlyRent}
-              onChange={(e) => {
-                setMonthlyRent(e.target.value);
-                if (rentErr) setRentErr(null);
-              }}
-              inputMode="decimal"
-              placeholder="0"
-            />
-            <span className="text-xs text-muted-foreground">
-              {t("Monthly rent collected from this worker for accommodation (leave blank or 0 if none).")}
-            </span>
+            <div className="space-y-1.5">
+              <Input
+                value={monthlyRent}
+                onChange={(e) => {
+                  setMonthlyRent(e.target.value);
+                  if (rentErr) setRentErr(null);
+                }}
+                inputMode="decimal"
+                placeholder="0"
+              />
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                <span>
+                  {t("Monthly rent collected from this worker for accommodation (leave blank or 0 if none).")}
+                </span>
+                {currentAcc && currentAcc.monthly_rent_paise > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setMonthlyRent((currentAcc.monthly_rent_paise / 100).toString())}
+                    className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                  >
+                    {t("Default for")} {currentAcc.name}: {formatINR(currentAcc.monthly_rent_paise)} / {t("month")} ({t("Use default")})
+                  </button>
+                )}
+              </div>
+            </div>
           </Field>
         </div>
         <div className="mt-6 flex justify-end gap-3">

@@ -1,6 +1,6 @@
 import { useT } from "@/lib/i18n";
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { formatAadhaar, validateAadhaar } from "@/lib/aadhaar";
 import { AadhaarInput } from "@/components/workers/AadhaarInput";
 import { AadhaarCopyPicker, type AadhaarFiles } from "@/components/workers/AadhaarCopyPicker";
 import { canManageWorkers, formatINR, nonNegativeRupeesToPaise, rupeesToPaise } from "@/lib/workers";
+import { accommodationsQuery } from "@/lib/accommodations";
 import { createWorker } from "@/lib/workers.functions";
 import { uploadAadhaarDoc, uploadWorkerPhoto } from "@/lib/worker-uploads";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
@@ -48,6 +49,9 @@ function NewWorkerPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const create = useServerFn(createWorker);
+  const accQuery = useQuery(accommodationsQuery(active.company_id));
+  const currentAcc = accQuery.data?.find((a) => a.id === personal.accommodation_id);
+
   const [step, setStep] = useState(0);
   const [personal, setPersonal] = useState(emptyPersonal);
   const [errors, setErrors] = useState<PersonalErrors>({});
@@ -153,7 +157,19 @@ function NewWorkerPage() {
         {step === 0 && (
           <div className="space-y-5">
             <PhotoPicker file={photo} onChange={setPhoto} />
-            <WorkerPersonalFields value={personal} onChange={setPersonal} errors={errors} companyId={active.company_id} />
+            <WorkerPersonalFields
+              value={personal}
+              onChange={setPersonal}
+              errors={errors}
+              companyId={active.company_id}
+              onAccommodationChange={(acc) => {
+                if (acc && acc.monthly_rent_paise > 0) {
+                  setMonthlyRent((acc.monthly_rent_paise / 100).toString());
+                } else if (!acc) {
+                  setMonthlyRent("");
+                }
+              }}
+            />
           </div>
         )}
 
@@ -210,18 +226,31 @@ function NewWorkerPage() {
               </span>
             </Field>
             <Field label="Monthly room rent (₹)" error={monthlyRentErr ?? undefined}>
-              <Input
-                value={monthlyRent}
-                onChange={(e) => {
-                  setMonthlyRent(e.target.value);
-                  if (monthlyRentErr) setMonthlyRentErr(null);
-                }}
-                inputMode="decimal"
-                placeholder="0"
-              />
-              <span className="text-xs text-muted-foreground">
-                {t("Monthly rent collected from this worker for accommodation (leave blank or 0 if none).")}
-              </span>
+              <div className="space-y-1.5">
+                <Input
+                  value={monthlyRent}
+                  onChange={(e) => {
+                    setMonthlyRent(e.target.value);
+                    if (monthlyRentErr) setMonthlyRentErr(null);
+                  }}
+                  inputMode="decimal"
+                  placeholder="0"
+                />
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {t("Monthly rent collected from this worker for accommodation (leave blank or 0 if none).")}
+                  </span>
+                  {currentAcc && currentAcc.monthly_rent_paise > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setMonthlyRent((currentAcc.monthly_rent_paise / 100).toString())}
+                      className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+                    >
+                      {t("Default for")} {currentAcc.name}: {formatINR(currentAcc.monthly_rent_paise)} / {t("month")} ({t("Use default")})
+                    </button>
+                  )}
+                </div>
+              </div>
             </Field>
             <div className="rounded-lg bg-muted p-4 text-sm">
               <div className="font-semibold">{personal.full_name}</div>
@@ -251,6 +280,9 @@ function NewWorkerPage() {
               {Boolean(nonNegativeRupeesToPaise(monthlyRent)) && (
                 <div className="mt-2 text-xs text-muted-foreground">
                   {t("Monthly rent")}: <b className="text-foreground">{formatINR(nonNegativeRupeesToPaise(monthlyRent) ?? 0)} / {t("month")}</b>
+                  {currentAcc && (
+                    <span> ({currentAcc.name}{currentAcc.monthly_rent_paise !== nonNegativeRupeesToPaise(monthlyRent) ? ` · ${t("Custom rate")}` : ""})</span>
+                  )}
                 </div>
               )}
             </div>

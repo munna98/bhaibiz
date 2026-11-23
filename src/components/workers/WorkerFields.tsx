@@ -10,8 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { INDIAN_STATES, WORKER_CATEGORIES, normalizeMobile, todayISO, type Worker } from "@/lib/workers";
-import { accommodationsQuery } from "@/lib/accommodations";
+import { INDIAN_STATES, WORKER_CATEGORIES, formatINR, normalizeMobile, todayISO, type Worker } from "@/lib/workers";
+import { accommodationsQuery, type Accommodation } from "@/lib/accommodations";
 import { cn, capitalizeWords } from "@/lib/utils";
 import { DateInput } from "@/components/ui/date-input";
 
@@ -93,11 +93,13 @@ export function WorkerPersonalFields({
   onChange,
   errors,
   companyId,
+  onAccommodationChange,
 }: {
   value: PersonalForm;
   onChange: (v: PersonalForm) => void;
   errors: PersonalErrors;
   companyId?: string;
+  onAccommodationChange?: (accommodation: Accommodation | null) => void;
 }) {
   const t = useT();
   const accQuery = useQuery({
@@ -139,7 +141,12 @@ export function WorkerPersonalFields({
         <Field label="Accommodation" className="sm:col-span-2" asDiv>
           <Select
             value={value.accommodation_id || "none"}
-            onValueChange={(v) => onChange({ ...value, accommodation_id: v === "none" ? null : v })}
+            onValueChange={(v) => {
+              const accId = v === "none" ? null : v;
+              onChange({ ...value, accommodation_id: accId });
+              const chosen = accId ? accommodations.find((a) => a.id === accId) ?? null : null;
+              onAccommodationChange?.(chosen);
+            }}
           >
             <SelectTrigger>
               <SelectValue placeholder={t("Select accommodation (optional)")} />
@@ -149,6 +156,11 @@ export function WorkerPersonalFields({
               {accommodations.map((acc) => (
                 <SelectItem key={acc.id} value={acc.id}>
                   <span className="capitalize">{acc.name}</span>
+                  {acc.monthly_rent_paise > 0 && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      ({formatINR(acc.monthly_rent_paise)} / {t("month")})
+                    </span>
+                  )}
                 </SelectItem>
               ))}
             </SelectContent>

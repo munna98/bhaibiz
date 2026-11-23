@@ -228,7 +228,20 @@ function Details({ worker }: { worker: Worker }) {
       <Row label="Emergency contact" value={[worker.emergency_name, worker.emergency_phone].filter(Boolean).join(" · ")} />
       <Row label="Joining date" value={formatDate(worker.joining_date)} />
       <Row label="Opening balance owed" value={formatINR(worker.opening_balance_paise ?? 0)} />
-      <Row label="Monthly room rent" value={worker.monthly_rent_paise ? `${formatINR(worker.monthly_rent_paise)} / ${t("month")}` : t("None")} />
+      <Row
+        label="Monthly room rent"
+        value={
+          worker.monthly_rent_paise
+            ? `${formatINR(worker.monthly_rent_paise)} / ${t("month")}${
+                acc && acc.monthly_rent_paise > 0 && acc.monthly_rent_paise !== worker.monthly_rent_paise
+                  ? ` (${t("Default")}: ${formatINR(acc.monthly_rent_paise)})`
+                  : ""
+              }`
+            : acc && acc.monthly_rent_paise > 0
+            ? `${t("None")} (${t("Default")}: ${formatINR(acc.monthly_rent_paise)})`
+            : t("None")
+        }
+      />
       <div className="sm:col-span-2"><Row label="Notes" value={worker.notes} /></div>
     </div>
   );

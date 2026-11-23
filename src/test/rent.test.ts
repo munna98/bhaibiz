@@ -162,4 +162,27 @@ describe("Worker Monthly Rent", () => {
     expect(canManageWorkers("operator")).toBe(false);
     expect(canManageWorkers("accountant")).toBe(false);
   });
+
+  it("supports worker rent customization different from accommodation default rent", () => {
+    // Accommodation default is 150000 paise (₹1,500)
+    const accDefaultPaise = 150000;
+    // Worker is assigned custom rent of 120000 paise (₹1,200)
+    const workerCustomPaise = 120000;
+
+    // Worker's own custom rent should be used for accrual calculations
+    const result = computeWorkerRentBreakdown({
+      joiningDate: "2026-10-01",
+      monthlyRentPaise: workerCustomPaise,
+      charges: [],
+      payments: [],
+      toDate: "2026-11-23",
+    });
+
+    // 2 months: 2026-11, 2026-10 at ₹1,200 = ₹2,400 (not the default ₹3,000)
+    expect(result.breakdown).toHaveLength(2);
+    expect(result.breakdown[0].charged).toBe(120000);
+    expect(result.breakdown[1].charged).toBe(120000);
+    expect(result.totalCharged).toBe(240000);
+    expect(formatINR(result.totalCharged)).toBe("₹2,400");
+  });
 });
