@@ -3,10 +3,12 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Receipt, Wallet, AlertCircle, CheckCircle2, Sliders } from "lucide-react";
+import { Plus, Receipt, Wallet, AlertCircle, CheckCircle2, Sliders, Pencil } from "lucide-react";
 import type { AppRole } from "@/lib/company";
 import { canHandleMoney, canRecordPayment, methodLabel, type PayMethod } from "@/lib/money";
 import { canManageWorkers, formatDate, formatINR, nonNegativeRupeesToPaise, rupeesToPaise } from "@/lib/workers";
+import { accommodationsQuery } from "@/lib/accommodations";
+import { supabase } from "@/integrations/supabase/client";
 import {
   currentPeriod,
   formatPeriod,
@@ -46,21 +48,63 @@ export function WorkerRent({
   role,
   monthlyRentPaise,
   joiningDate,
+  accommodationId,
+  workerName,
 }: {
   workerId: string;
   companyId: string;
   role: AppRole;
   monthlyRentPaise: number;
   joiningDate?: string | null;
+  accommodationId?: string | null;
+  workerName?: string;
 }) {
   const t = useT();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data, isLoading } = useQuery(workerRentQuery(workerId));
 
+  const accQuery = useQuery(accommodationsQuery(companyId));
+  const currentAcc = accQuery.data?.find((a) => a.id === accommodationId);
+
   const [collectOpen, setCollectOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState(() => currentPeriod());
   const [collectAmount, setCollectAmount] = useState<number | null>(null);
+
+  const [settingOpen, setSettingOpen] = useState(false);
+  const [newRentRupees, setNewRentRupees] = useState(() =>
+    monthlyRentPaise > 0
+      ? (monthlyRentPaise / 100).toString()
+      : currentAcc && currentAcc.monthly_rent_paise > 0
+      ? (currentAcc.monthly_rent_paise / 100).toString()
+      : ""
+  );
+  const [settingErr, setSettingErr] = useState<string | null>(null);
+
+  const updateSettingMutation = useMutation({
+    mutationFn: async () => {
+      const paise = nonNegativeRupeesToPaise(newRentRupees);
+      if (paise === null) {
+        throw new Error(t("Enter a valid monthly rent or 0."));
+      }
+      const { error } = await supabase
+        .from("workers")
+        .update({ monthly_rent_paise: paise })
+        .eq("id", workerId);
+      if (error) throw error;
+      return paise;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workers", companyId] });
+      invalidateRent(qc);
+      toast.success(t("Monthly rent setting updated"));
+      setSettingOpen(false);
+    },
+    onError: (e: Error) => {
+      setSettingErr(e.message);
+      toast.error(e.message);
+    },
+  });
 
   const [chargeOpen, setChargeOpen] = useState(false);
   const [chargePeriod, setChargePeriod] = useState(() => currentPeriod());
@@ -162,10 +206,44 @@ export function WorkerRent({
     <div className="mt-4 space-y-6">
       {/* Overview Stat Boxes */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Box
-          label="Monthly rent setting"
-          value={monthlyRentPaise > 0 ? `${formatINR(monthlyRentPaise)} / mo` : t("None")}
-        />
+        <div className="rounded-xl border bg-card p-3.5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{t("Monthly rent setting")}</span>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewRentRupees(
+                      monthlyRentPaise > 0
+                        ? (monthlyRentPaise / 100).toString()
+                        : currentAcc && currentAcc.monthly_rent_paise > 0
+                        ? (currentAcc.monthly_rent_paise / 100).toString()
+                        : ""
+                    );
+                    setSettingErr(null);
+                    setSettingOpen(true);
+                  }}
+                  className="text-primary hover:underline flex items-center gap-0.5 text-xs font-medium"
+                >
+                  <Pencil className="h-3 w-3" />
+                  {monthlyRentPaise > 0 ? t("Edit") : t("Set")}
+                </button>
+              )}
+            </div>
+            <div className="font-bold text-base mt-0.5 text-foreground">
+              {monthlyRentPaise > 0 ? `${formatINR(monthlyRentPaise)} / ${t("mo")}` : t("None")}
+            </div>
+          </div>
+          {currentAcc && (
+            <div className="text-[11px] text-muted-foreground mt-1 truncate">
+              🏠 {currentAcc.name}
+              {currentAcc.monthly_rent_paise > 0 && currentAcc.monthly_rent_paise !== monthlyRentPaise ? (
+                <span> · {t("Default")}: {formatINR(currentAcc.monthly_rent_paise)}</span>
+              ) : null}
+            </div>
+          )}
+        </div>
         <Box label="Total charged" value={formatINR(totalCharged)} />
         <Box label="Total collected" value={formatINR(totalPaid)} />
         <Box
@@ -483,6 +561,65 @@ export function WorkerRent({
               </Button>
               <Button type="submit" disabled={chargeMutation.isPending || !chargeAmountRupees.trim()}>
                 {chargeMutation.isPending ? t("Saving…") : t("Save adjustment")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Edit Recurring Monthly Rent Setting */}
+      <Dialog open={settingOpen} onOpenChange={setSettingOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Monthly rent setting")}</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {t("Set the recurring monthly accommodation rent for this worker. This will automatically accrue every active month.")}
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              updateSettingMutation.mutate();
+            }}
+          >
+            <div className="space-y-4 py-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="worker-monthly-rent-input">{t("Monthly room rent (₹)")} *</Label>
+                <Input
+                  id="worker-monthly-rent-input"
+                  value={newRentRupees}
+                  onChange={(e) => {
+                    setNewRentRupees(e.target.value);
+                    if (settingErr) setSettingErr(null);
+                  }}
+                  inputMode="decimal"
+                  placeholder="0"
+                  required
+                />
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span>{t("Leave 0 if this worker does not pay accommodation rent.")}</span>
+                  {currentAcc && currentAcc.monthly_rent_paise > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewRentRupees((currentAcc.monthly_rent_paise / 100).toString());
+                        if (settingErr) setSettingErr(null);
+                      }}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      {t("Default for")} {currentAcc.name}: {formatINR(currentAcc.monthly_rent_paise)} ({t("Use default")})
+                    </button>
+                  )}
+                </div>
+              </div>
+              {settingErr && <p className="text-xs text-destructive">{settingErr}</p>}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setSettingOpen(false)}>
+                {t("Cancel")}
+              </Button>
+              <Button type="submit" disabled={updateSettingMutation.isPending}>
+                {updateSettingMutation.isPending ? t("Saving…") : t("Save")}
               </Button>
             </DialogFooter>
           </form>

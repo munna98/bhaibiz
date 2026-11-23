@@ -78,6 +78,8 @@ function Profile({ worker }: { worker: Worker }) {
   const cid = active.company_id;
   const qc = useQueryClient();
   const { data: allAgreements } = useSuspenseQuery(agreementsQuery(cid));
+  const accQuery = useQuery(accommodationsQuery(cid));
+  const acc = accQuery.data?.find((a) => a.id === worker.accommodation_id);
   const agreements = allAgreements.filter((a) => a.worker_id === worker.id);
   const today = todayISO();
   const rate = rateOn(agreements, today);
@@ -145,6 +147,11 @@ function Profile({ worker }: { worker: Worker }) {
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold capitalize">{worker.full_name}</h1>
               <StatusBadge status={worker.status} />
+              {acc && (
+                <span className="rounded-md border bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground font-medium">
+                  🏠 {acc.name}
+                </span>
+              )}
             </div>
             <div className="text-sm text-muted-foreground">
               {worker.worker_code}{worker.category ? ` · ${worker.category}` : ""} · {t("Joined")} {formatDate(worker.joining_date)}
@@ -153,10 +160,19 @@ function Profile({ worker }: { worker: Worker }) {
               <Phone className="h-3.5 w-3.5" /> {worker.mobile}
             </a>
           </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">{t("Today's rate")}</div>
-            <div className="text-2xl font-bold text-primary">{rate ? formatINR(rate) : "—"}</div>
-            <div className="text-xs text-muted-foreground">{t("per worked day")}</div>
+          <div className="flex flex-wrap items-center justify-end gap-4 text-right">
+            {(worker.monthly_rent_paise ?? 0) > 0 && (
+              <div>
+                <div className="text-xs text-muted-foreground">{t("Monthly rent")}</div>
+                <div className="text-xl font-bold text-foreground">{formatINR(worker.monthly_rent_paise!)}</div>
+                <div className="text-xs text-muted-foreground">{t("per month")}</div>
+              </div>
+            )}
+            <div>
+              <div className="text-xs text-muted-foreground">{t("Today's rate")}</div>
+              <div className="text-2xl font-bold text-primary">{rate ? formatINR(rate) : "—"}</div>
+              <div className="text-xs text-muted-foreground">{t("per worked day")}</div>
+            </div>
           </div>
         </div>
         {canManageWorkers(role) && (
@@ -183,7 +199,17 @@ function Profile({ worker }: { worker: Worker }) {
         </TabsList>
         <TabsContent value="details"><Details worker={worker} /></TabsContent>
         <TabsContent value="ledger"><WorkerLedger workerId={worker.id} companyId={cid} role={active.role} /></TabsContent>
-        <TabsContent value="rent"><WorkerRent workerId={worker.id} companyId={cid} role={active.role} monthlyRentPaise={worker.monthly_rent_paise ?? 0} joiningDate={worker.joining_date} /></TabsContent>
+        <TabsContent value="rent">
+          <WorkerRent
+            workerId={worker.id}
+            companyId={cid}
+            role={active.role}
+            monthlyRentPaise={worker.monthly_rent_paise ?? 0}
+            joiningDate={worker.joining_date}
+            accommodationId={worker.accommodation_id}
+            workerName={worker.full_name}
+          />
+        </TabsContent>
         <TabsContent value="advances"><WorkerAdvances workerId={worker.id} companyId={cid} role={active.role} /></TabsContent>
         <TabsContent value="identity"><Identity worker={worker} /></TabsContent>
         <TabsContent value="rates"><Rates worker={worker} agreements={agreements} today={today} /></TabsContent>

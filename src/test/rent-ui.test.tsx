@@ -99,5 +99,11 @@ describe("WorkerRent component UI", () => {
 
     expect(screen.getByText("Monthly rent breakdown")).toBeDefined();
     expect(screen.getByText("No rent charges or payments recorded yet for this worker.")).toBeDefined();
+
+    // Verify Set button is available when rent setting is None
+    const setBtn = screen.getByText("Set");
+    expect(setBtn).toBeDefined();
+    fireEvent.click(setBtn);
+    expect(screen.getByText("Set the recurring monthly accommodation rent for this worker. This will automatically accrue every active month.")).toBeDefined();
   });
 });
