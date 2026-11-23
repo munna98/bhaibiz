@@ -514,7 +514,7 @@ function AttendancePage() {
                     }}
                     aria-label={`${w.full_name}: ${t(LABEL[m])}`}
                     className={cn(
-                      "group relative flex flex-col items-center justify-center rounded-xl border-2 p-2 sm:p-2.5 text-center transition-all select-none min-h-[86px]",
+                      "group relative isolate flex flex-col items-center justify-center rounded-xl border-2 p-2 sm:p-2.5 text-center transition-all select-none min-h-[86px]",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       (!editable || isMutating) && "pointer-events-none opacity-60",
                       editable && !isMutating && "cursor-pointer active:scale-[0.97]",

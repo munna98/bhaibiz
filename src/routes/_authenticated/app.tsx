@@ -417,7 +417,7 @@ function ShellContent({
         </main>
       </div>
 
-      <nav className="app-navigation fixed inset-x-0 bottom-0 flex border-t bg-card md:hidden">
+      <nav className="app-navigation fixed inset-x-0 bottom-0 z-40 flex border-t bg-card md:hidden">
         {mobileNav
           .filter((n) => n.show)
           .map((n) => (
