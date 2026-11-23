@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Receipt, Wallet, AlertCircle, CheckCircle2, Sliders, Pencil } from "lucide-react";
+import { Plus, Receipt, Wallet, AlertCircle, CheckCircle2, Sliders, Pencil, Building2 } from "lucide-react";
 import type { AppRole } from "@/lib/company";
 import { canHandleMoney, canRecordPayment, methodLabel, type PayMethod } from "@/lib/money";
 import { canManageWorkers, formatDate, formatINR, nonNegativeRupeesToPaise, rupeesToPaise } from "@/lib/workers";
@@ -236,10 +236,11 @@ export function WorkerRent({
             </div>
           </div>
           {currentAcc && (
-            <div className="text-[11px] text-muted-foreground mt-1 truncate">
-              🏠 {currentAcc.name}
+            <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1 truncate">
+              <Building2 className="h-3 w-3 shrink-0" />
+              <span className="truncate">{currentAcc.name}</span>
               {currentAcc.monthly_rent_paise > 0 && currentAcc.monthly_rent_paise !== monthlyRentPaise ? (
-                <span> · {t("Default")}: {formatINR(currentAcc.monthly_rent_paise)}</span>
+                <span className="shrink-0"> · {t("Default")}: {formatINR(currentAcc.monthly_rent_paise)}</span>
               ) : null}
             </div>
           )}
@@ -607,7 +608,10 @@ export function WorkerRent({
                       }}
                       className="text-primary hover:underline font-medium"
                     >
-                      {t("Default for")} {currentAcc.name}: {formatINR(currentAcc.monthly_rent_paise)} ({t("Use default")})
+                      <span className="inline-flex items-center gap-1">
+                        <Building2 className="h-3 w-3" />
+                        <span>{t("Default for")} {currentAcc.name}: {formatINR(currentAcc.monthly_rent_paise)} ({t("Use default")})</span>
+                      </span>
                     </button>
                   )}
                 </div>

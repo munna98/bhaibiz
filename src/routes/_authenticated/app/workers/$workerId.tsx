@@ -4,7 +4,7 @@ import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-quer
 import { useServerFn } from "@tanstack/react-start";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Camera, Eye, FileText, FileUp, Pencil, Phone, ZoomIn } from "lucide-react";
+import { ArrowLeft, Building2, Camera, Eye, FileText, FileUp, Pencil, Phone, ZoomIn } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
 import { accommodationsQuery } from "@/lib/accommodations";
@@ -148,8 +148,9 @@ function Profile({ worker }: { worker: Worker }) {
               <h1 className="text-2xl font-bold capitalize">{worker.full_name}</h1>
               <StatusBadge status={worker.status} />
               {acc && (
-                <span className="rounded-md border bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground font-medium">
-                  🏠 {acc.name}
+                <span className="inline-flex items-center gap-1 rounded-md border bg-muted/60 px-2 py-0.5 text-xs text-muted-foreground font-medium">
+                  <Building2 className="h-3 w-3" />
+                  <span>{acc.name}</span>
                 </span>
               )}
             </div>
