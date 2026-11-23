@@ -152,4 +152,98 @@ describe("reports configuration and navigation", () => {
     expect(report.rows.length).toBeGreaterThanOrEqual(withBalance.length);
     expect(withBalance.every((r) => Number(r.cells[6]) > 0)).toBe(true);
   });
+
+  it("filters room rent report by accommodation (specific accommodation, none/unassigned, or all)", () => {
+    const accRentData: ReportData = {
+      ...data,
+      workers: [
+        {
+          id: "w1",
+          full_name: "Worker in Camp A",
+          worker_code: "BB-0001",
+          status: "active",
+          joining_date: "2026-11-01",
+          monthly_rent_paise: 200000,
+          accommodation_id: "acc-camp-a",
+        },
+        {
+          id: "w2",
+          full_name: "Worker in Camp B",
+          worker_code: "BB-0002",
+          status: "active",
+          joining_date: "2026-11-01",
+          monthly_rent_paise: 150000,
+          accommodation_id: "acc-camp-b",
+        },
+        {
+          id: "w3",
+          full_name: "Worker Without Camp",
+          worker_code: "BB-0003",
+          status: "active",
+          joining_date: "2026-11-01",
+          monthly_rent_paise: 100000,
+          accommodation_id: null,
+        },
+      ],
+      rentCharges: [],
+      rentPayments: [],
+    };
+
+    // Filter by specific accommodation "acc-camp-a"
+    const campAReport = buildReport(accRentData, "rent", "2026-11-01", "2026-11-30", "all", "", "acc-camp-a");
+    expect(campAReport.rows).toHaveLength(1);
+    expect(campAReport.rows[0]?.workerId).toBe("w1");
+    expect(campAReport.rows[0]?.cells[3]).toBe(2000); // Monthly rent ₹2,000
+
+    // Filter by specific accommodation "acc-camp-b"
+    const campBReport = buildReport(accRentData, "rent", "2026-11-01", "2026-11-30", "all", "", "acc-camp-b");
+    expect(campBReport.rows).toHaveLength(1);
+    expect(campBReport.rows[0]?.workerId).toBe("w2");
+    expect(campBReport.rows[0]?.cells[3]).toBe(1500); // Monthly rent ₹1,500
+
+    // Filter by "none" (workers with no accommodation assigned)
+    const unassignedReport = buildReport(accRentData, "rent", "2026-11-01", "2026-11-30", "all", "", "none");
+    expect(unassignedReport.rows).toHaveLength(1);
+    expect(unassignedReport.rows[0]?.workerId).toBe("w3");
+
+    // All accommodations
+    const allReport = buildReport(accRentData, "rent", "2026-11-01", "2026-11-30", "all", "", "");
+    expect(allReport.rows).toHaveLength(3);
+  });
+
+  it("worker combobox search filter matches workers by name, worker code and handles empty search", () => {
+    const workerFilter = (val: string, s: string, kw?: string[]) => {
+      const q = s.trim().toLowerCase();
+      if (!q) return 1;
+      const text = (kw ? kw.join(" ") : val).toLowerCase();
+      return text.includes(q) ? 1 : 0;
+    };
+
+    const worker = {
+      id: "w-uuid-1",
+      full_name: "Ramesh Kumar",
+      worker_code: "BB-0105",
+      status: "active",
+    };
+    const keywords = [worker.worker_code, worker.full_name, worker.status];
+
+    // Search by name
+    expect(workerFilter(worker.id, "ramesh", keywords)).toBe(1);
+    expect(workerFilter(worker.id, "KUMAR", keywords)).toBe(1);
+    // Search by code
+    expect(workerFilter(worker.id, "0105", keywords)).toBe(1);
+    expect(workerFilter(worker.id, "bb-0105", keywords)).toBe(1);
+    // Empty search matches all
+    expect(workerFilter(worker.id, "", keywords)).toBe(1);
+    expect(workerFilter(worker.id, "   ", keywords)).toBe(1);
+    // Non-matching query
+    expect(workerFilter(worker.id, "suresh", keywords)).toBe(0);
+    expect(workerFilter(worker.id, "9999", keywords)).toBe(0);
+
+    // "All workers" item
+    const allKeywords = ["all", "workers", "all workers", "All workers"];
+    expect(workerFilter("all", "all", allKeywords)).toBe(1);
+    expect(workerFilter("all", "worker", allKeywords)).toBe(1);
+    expect(workerFilter("all", "xyz", allKeywords)).toBe(0);
+  });
 });

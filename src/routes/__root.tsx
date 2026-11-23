@@ -13,6 +13,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/lib/i18n";
+import { RouteLoadingBar } from "@/components/RouteLoadingBar";
 
 function NotFoundComponent() {
   return (
@@ -121,6 +122,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <LanguageProvider>
+        <RouteLoadingBar />
         <Outlet />
         <Toaster richColors position="top-center" />
       </LanguageProvider>

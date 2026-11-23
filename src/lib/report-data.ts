@@ -67,7 +67,7 @@ export const REPORT_CONFIG_ITEMS: ReportConfigItem[] = [
     note: "Rent is tracked by billing month and kept separate from daily labor commission dues.",
   },
 ];
-export type ReportWorker = { id: string; full_name: string; worker_code: string; status: string; joining_date: string; opening_balance_paise?: number; monthly_rent_paise?: number };
+export type ReportWorker = { id: string; full_name: string; worker_code: string; status: string; joining_date: string; opening_balance_paise?: number; monthly_rent_paise?: number; accommodation_id?: string | null };
 export type ReportData = {
   workers: ReportWorker[];
   attendance: { id: string; worker_id: string; work_date: string; status: string }[];
@@ -100,8 +100,27 @@ export function workerActiveOn(w: ReportWorker, date: string, history: ReportDat
   return (latest?.status ?? w.status) === "active";
 }
 
-export function buildReport(data: ReportData, kind: ReportKind, from: string, to: string, status = "active", workerId = ""): ReportResult {
-  const workers = data.workers.filter(w => (!workerId || w.id === workerId) && (status === "all" || w.status === status));
+export function buildReport(
+  data: ReportData,
+  kind: ReportKind,
+  from: string,
+  to: string,
+  status = "active",
+  workerId = "",
+  accommodationId = "",
+): ReportResult {
+  const workers = data.workers.filter((w) => {
+    if (workerId && w.id !== workerId) return false;
+    if (status !== "all" && w.status !== status) return false;
+    if (accommodationId) {
+      if (accommodationId === "none") {
+        if (w.accommodation_id) return false;
+      } else if (w.accommodation_id !== accommodationId) {
+        return false;
+      }
+    }
+    return true;
+  });
   const byId = new Map(workers.map(w => [w.id, w]));
   const during = (date: string) => date >= from && date <= to;
   const rows: ReportRow[] = [];

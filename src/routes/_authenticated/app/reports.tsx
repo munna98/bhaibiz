@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
-import { useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import {
@@ -13,15 +13,19 @@ import {
   HandCoins,
   Home,
   Filter,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { myMembershipsQuery, pickActive } from "@/lib/company";
 import { reportsQuery } from "@/lib/reports";
+import { accommodationsQuery } from "@/lib/accommodations";
 import { buildReport, canViewReports, excelRows, REPORT_CONFIG_ITEMS, type ReportKind } from "@/lib/report-data";
 import { formatINR, todayISO } from "@/lib/workers";
 import { formatDate } from "@/lib/dates";
 import { validMoneyDate } from "@/lib/money";
+import { cn } from "@/lib/utils";
 import { useActiveMembership } from "../app";
 import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
@@ -32,6 +36,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageError, PageMissing } from "@/components/PageFeedback";
 import { DateInput } from "@/components/ui/date-input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 const schema = z.object({
   kind: fallback(z.string(), "outstanding").default("outstanding"),
@@ -40,6 +53,7 @@ const schema = z.object({
   status: fallback(z.string(), "active").default("active"),
   worker: fallback(z.string(), "").default(""),
   only_due: fallback(z.string(), "").default(""),
+  accommodation: fallback(z.string(), "").default(""),
 });
 
 const REPORT_ICONS: Record<ReportKind, typeof Coins> = {
@@ -82,10 +96,14 @@ export const Route = createFileRoute("/_authenticated/app/reports")({
   loaderDeps: ({ search }) => ({ to: search.to }),
   loader: async ({ context, deps }) => {
     const active = pickActive(await context.queryClient.ensureQueryData(myMembershipsQuery()));
-    if (active && canViewReports(active.role))
-      await context.queryClient.ensureQueryData(
-        reportsQuery(active.company_id, validMoneyDate(deps.to, todayISO()) ? deps.to : todayISO()),
-      );
+    if (active && canViewReports(active.role)) {
+      await Promise.all([
+        context.queryClient.ensureQueryData(
+          reportsQuery(active.company_id, validMoneyDate(deps.to, todayISO()) ? deps.to : todayISO()),
+        ),
+        context.queryClient.ensureQueryData(accommodationsQuery(active.company_id)),
+      ]);
+    }
   },
   head: () => ({
     meta: [
@@ -127,11 +145,37 @@ function ReportContent() {
   const isRangeKind = kind === "attendance" || kind === "earned" || kind === "collections";
   const isOnlyDue = search.only_due === "1";
 
+  const { data: accommodations = [] } = useQuery(accommodationsQuery(active.company_id));
+  const accMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const a of accommodations) m.set(a.id, a.name);
+    return m;
+  }, [accommodations]);
+
+  const accommodationFilter = kind === "rent" ? search.accommodation : "";
+
+  const [workerOpen, setWorkerOpen] = useState(false);
+
   const { data } = useSuspenseQuery(reportsQuery(active.company_id, validMoneyDate(to, today) ? to : today));
   const result =
     valid && !rangeTooLong
-      ? buildReport(data, kind, from, to, status, search.worker)
+      ? buildReport(data, kind, from, to, status, search.worker, accommodationFilter)
       : { headers: [], rows: [], total: 0, moneyColumns: [] };
+
+  const selectedWorker = useMemo(
+    () => (search.worker ? data.workers.find((w) => w.id === search.worker) : null),
+    [data.workers, search.worker],
+  );
+
+  const filteredWorkersForSelect = useMemo(() => {
+    if (kind !== "rent" || !search.accommodation || search.accommodation === "all") {
+      return data.workers;
+    }
+    if (search.accommodation === "none") {
+      return data.workers.filter((w) => !w.accommodation_id);
+    }
+    return data.workers.filter((w) => w.accommodation_id === search.accommodation);
+  }, [data.workers, search.accommodation, kind]);
 
   const update = (key: keyof typeof search, value: string) =>
     void navigate({ search: (prev) => ({ ...prev, [key]: value }), replace: true });
@@ -146,6 +190,9 @@ function ReportContent() {
       }
       if (kind === "advances") {
         return result.rows.filter((r) => Number(r.cells[5]) > 0);
+      }
+      if (kind === "rent") {
+        return result.rows.filter((r) => Number(r.cells[6]) > 0);
       }
     }
     return result.rows;
@@ -177,6 +224,13 @@ function ReportContent() {
     if (kind === "attendance") {
       const worked = displayRows.filter((r) => r.cells[3] === "Worked").length;
       return { worked };
+    }
+    if (kind === "rent") {
+      const monthly = displayRows.reduce((s, r) => s + Math.round(Number(r.cells[3]) * 100), 0);
+      const charged = displayRows.reduce((s, r) => s + Math.round(Number(r.cells[4]) * 100), 0);
+      const collected = displayRows.reduce((s, r) => s + Math.round(Number(r.cells[5]) * 100), 0);
+      const due = displayRows.reduce((s, r) => s + Math.round(Number(r.cells[6]) * 100), 0);
+      return { monthly, charged, collected, due };
     }
     return {};
   }, [displayRows, kind]);
@@ -241,6 +295,18 @@ function ReportContent() {
         { label: "Total Advances Given", value: formatINR(totalGiven), highlight: false, sub: `${t("disbursed")}` },
         { label: "Total Repayments", value: formatINR(totalRepaid), highlight: false, sub: `${t("repaid")}` },
         { label: "Workers with Advance", value: `${workersWithAdv} / ${result.rows.length}`, highlight: false, sub: `${t("active balances")}` },
+      ];
+    }
+    if (kind === "rent") {
+      const totalDue = result.total;
+      const totalCharged = result.rows.reduce((s, r) => s + Math.round(Number(r.cells[4]) * 100), 0);
+      const totalCollected = result.rows.reduce((s, r) => s + Math.round(Number(r.cells[5]) * 100), 0);
+      const workersWithDue = result.rows.filter((r) => Number(r.cells[6]) > 0).length;
+      return [
+        { label: "Net Rent Due", value: formatINR(totalDue), highlight: true, sub: `${workersWithDue} ${t("workers with rent due")}` },
+        { label: "Total Rent Charged", value: formatINR(totalCharged), highlight: false, sub: `${t("through")} ${formatDate(to)}` },
+        { label: "Total Rent Collected", value: formatINR(totalCollected), highlight: false, sub: `${t("rent receipts")}` },
+        { label: "Workers with Rent Due", value: `${workersWithDue} / ${result.rows.length}`, highlight: false, sub: `${Math.round((workersWithDue / (result.rows.length || 1)) * 100)}% ${t("of workers")}` },
       ];
     }
     return [];
@@ -314,7 +380,7 @@ function ReportContent() {
       }
       return <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-300 font-normal text-xs">{t(String(c))}</Badge>;
     }
-    if ((kind === "outstanding" || kind === "advances") && i === 2) {
+    if ((kind === "outstanding" || kind === "advances" || kind === "rent") && i === 2) {
       const isAct = c === "active";
       return (
         <Badge variant="outline" className={`font-normal text-[11px] py-0 ${isAct ? "border-emerald-200 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300" : "border-slate-200 text-slate-500 dark:border-slate-800 dark:text-slate-400"}`}>
@@ -323,7 +389,7 @@ function ReportContent() {
       );
     }
     if (typeof c === "number" && result.moneyColumns.includes(i)) {
-      if (kind === "outstanding" && i === 6) {
+      if ((kind === "outstanding" || kind === "rent") && i === 6) {
         return (
           <span className={c > 0 ? "font-semibold text-foreground" : "text-muted-foreground"}>
             {formatINR(Math.round(c * 100))}
@@ -546,6 +612,28 @@ function ReportContent() {
             <Label htmlFor="report-to" className="text-xs">{t(isRangeKind ? "To" : "As of")}</Label>
             <DateInput id="report-to" value={to} max={today} onChange={(v) => update("to", v)} />
           </div>
+          {kind === "rent" && accommodations.length > 0 && (
+            <div>
+              <Label className="text-xs">{t("Accommodation")}</Label>
+              <Select
+                value={search.accommodation || "all"}
+                onValueChange={(v) => update("accommodation", v === "all" ? "" : v)}
+              >
+                <SelectTrigger aria-label={t("Accommodation")}>
+                  <SelectValue placeholder={t("All accommodations")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("All accommodations")}</SelectItem>
+                  <SelectItem value="none">{t("No accommodation")}</SelectItem>
+                  {accommodations.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      <span className="capitalize">{a.name}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label className="text-xs">{t("Status")}</Label>
             <Select value={status} onValueChange={(v) => update("status", v)}>
@@ -555,17 +643,101 @@ function ReportContent() {
           </div>
           <div>
             <Label className="text-xs">{t("Worker")}</Label>
-            <Select value={search.worker || "all"} onValueChange={(v) => update("worker", v === "all" ? "" : v)}>
-              <SelectTrigger aria-label={t("Worker")}><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("All workers")}</SelectItem>
-                {data.workers.map((w) => <SelectItem key={w.id} value={w.id}><span className="capitalize">{w.full_name}</span> · {w.worker_code}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Popover open={workerOpen} onOpenChange={setWorkerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={workerOpen}
+                  aria-label={t("Worker")}
+                  className="flex h-9 w-full items-center justify-between font-normal px-3 shadow-xs hover:bg-background"
+                >
+                  <span className="truncate">
+                    {selectedWorker ? (
+                      <>
+                        <span className="capitalize font-medium">{selectedWorker.full_name}</span>{" "}
+                        <span className="text-muted-foreground">· {selectedWorker.worker_code}</span>
+                      </>
+                    ) : (
+                      t("All workers")
+                    )}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] min-w-[240px] p-0" align="start">
+                <Command
+                  filter={(val, s, kw) => {
+                    const q = s.trim().toLowerCase();
+                    if (!q) return 1;
+                    const text = (kw ? kw.join(" ") : val).toLowerCase();
+                    return text.includes(q) ? 1 : 0;
+                  }}
+                >
+                  <CommandInput placeholder={t("Search worker...")} />
+                  <CommandList>
+                    <CommandEmpty>{t("No worker found.")}</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="all"
+                        keywords={["all", "workers", "all workers", t("All workers")]}
+                        onSelect={() => {
+                          update("worker", "");
+                          setWorkerOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4 shrink-0",
+                            !search.worker ? "opacity-100" : "opacity-0",
+                          )}
+                        />
+                        <span>{t("All workers")}</span>
+                      </CommandItem>
+                      {filteredWorkersForSelect.map((w) => {
+                        const isSelected = search.worker === w.id;
+                        return (
+                          <CommandItem
+                            key={w.id}
+                            value={w.id}
+                            keywords={[w.worker_code, w.full_name, w.status]}
+                            onSelect={() => {
+                              void navigate({
+                                search: (prev) => ({
+                                  ...prev,
+                                  worker: w.id,
+                                  ...(prev.status && prev.status !== "all" && prev.status !== w.status ? { status: "all" } : {}),
+                                }),
+                                replace: true,
+                              });
+                              setWorkerOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4 shrink-0",
+                                isSelected ? "opacity-100" : "opacity-0",
+                              )}
+                            />
+                            <span className="capitalize font-medium">{w.full_name}</span>
+                            <span className="text-muted-foreground ml-1">· {w.worker_code}</span>
+                            {w.status === "inactive" && (
+                              <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">
+                                {t("inactive")}
+                              </span>
+                            )}
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
-        {(kind === "outstanding" || kind === "advances") && (
+        {(kind === "outstanding" || kind === "advances" || kind === "rent") && (
           <div className="mt-3 flex items-center gap-2 border-t pt-3">
             <Checkbox
               id="only-due"
@@ -593,11 +765,14 @@ function ReportContent() {
                 <span className="text-lg font-semibold text-primary">{t(activeConfig.label)}</span>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                {kind === "outstanding" || kind === "advances"
+                {kind === "outstanding" || kind === "advances" || kind === "rent"
                   ? `${t("As of")} ${formatDate(to)}`
                   : `${formatDate(from)} — ${formatDate(to)}`}
                 {" "}· {t(status)}
                 {isOnlyDue && ` · ${t("Only with balance (> ₹0)")}`}
+                {kind === "rent" && search.accommodation && (
+                  ` · ${search.accommodation === "none" ? t("No accommodation") : (accMap.get(search.accommodation) ?? t("Accommodation"))}`
+                )}
               </p>
             </div>
             <div className="text-right">
@@ -612,6 +787,8 @@ function ReportContent() {
                         ? columnSums.balance ?? 0
                         : kind === "collections"
                         ? columnSums.collected ?? 0
+                        : kind === "rent"
+                        ? columnSums.due ?? 0
                         : columnSums.earned ?? 0,
                     )}
               </div>
@@ -680,6 +857,12 @@ function ReportContent() {
                       }
                       if (kind === "attendance" && i === 3) {
                         return <td key={i} className="whitespace-nowrap px-3 py-3 text-right text-primary font-bold">{columnSums.worked ?? 0} {t("worked")}</td>;
+                      }
+                      if (kind === "rent") {
+                        if (i === 3) return <td key={i} className="whitespace-nowrap px-3 py-3 text-right">{formatINR(columnSums.monthly ?? 0)}</td>;
+                        if (i === 4) return <td key={i} className="whitespace-nowrap px-3 py-3 text-right">{formatINR(columnSums.charged ?? 0)}</td>;
+                        if (i === 5) return <td key={i} className="whitespace-nowrap px-3 py-3 text-right">{formatINR(columnSums.collected ?? 0)}</td>;
+                        if (i === 6) return <td key={i} className="whitespace-nowrap px-3 py-3 text-right text-primary font-bold">{formatINR(columnSums.due ?? 0)}</td>;
                       }
                       return <td key={i} className="px-3 py-3"></td>;
                     })}
