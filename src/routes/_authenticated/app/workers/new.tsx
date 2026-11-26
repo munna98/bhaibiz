@@ -50,7 +50,6 @@ function NewWorkerPage() {
   const qc = useQueryClient();
   const create = useServerFn(createWorker);
   const accQuery = useQuery(accommodationsQuery(active.company_id));
-  const currentAcc = accQuery.data?.find((a) => a.id === personal.accommodation_id);
 
   const [step, setStep] = useState(0);
   const [personal, setPersonal] = useState(emptyPersonal);
@@ -67,6 +66,8 @@ function NewWorkerPage() {
   const [monthlyRent, setMonthlyRent] = useState("");
   const [monthlyRentErr, setMonthlyRentErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const currentAcc = accQuery.data?.find((a) => a.id === personal.accommodation_id);
 
   if (!canManageWorkers(active.role)) {
     return <p className="text-muted-foreground">{t("Only owners and managers can add workers.")}</p>;
